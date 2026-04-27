@@ -446,6 +446,59 @@ grep -R "\[bmai-fork\]" -n backend frontend
 
 ## 12. 上游合并建议流程
 
+### 12.1 第一次和上游建立历史关联（当前仓库必须先做）
+
+当前仓库的 `main` 不是从上游直接 clone 下来的，而是一个扁平 import：
+- `main`：`5c28483d chore: import sub2api v0.1.113 as baseline`
+- 上游最新：`upstream/main`（当前到 `v0.1.119`）
+
+因此，**第一次升级不能直接执行 `git merge upstream/main`**，因为本地 `main` 和上游 `main` 没有共同 git 历史。
+
+正确做法是：
+
+1. 先归档当前 `main`
+2. 基于 `upstream/main` 新建升级分支
+3. 把我们自己的本地提交按顺序 `cherry-pick` 上去
+4. 验证通过后，再决定是否让 `main` 指向这个新分支
+
+已验证可行的实际命令：
+
+```bash
+# 1. 拉上游
+git fetch upstream
+
+# 2. 归档当前 main（保留旧历史）
+git branch archive/main-import-v0.1.113 main
+
+# 3. 基于 upstream/main 建升级分支
+git checkout -b upgrade/upstream-v0.1.119-vendor-dashboard upstream/main
+
+# 4. 按时间顺序迁移我们的 4 个提交
+git cherry-pick \
+  a9bbedb2 \
+  d8ce7992 \
+  ec4d6451 \
+  e73a4896
+
+# 5. 推到自己的 origin，单独验证
+git push origin archive/main-import-v0.1.113
+git push origin upgrade/upstream-v0.1.119-vendor-dashboard
+```
+
+这次演练结果：
+- 4 个提交全部 `cherry-pick` 成功
+- **0 冲突**
+- `[bmai-fork]` 标记仍完整保留
+
+后续建议：
+- 在 `upgrade/upstream-v0.1.119-vendor-dashboard` 分支上继续构建镜像、做预览验证
+- 验证没问题后，再决定是否让 `main` 指向这个升级分支
+- 旧 `main` 已归档在 `archive/main-import-v0.1.113`，不会丢历史
+
+### 12.2 已建立历史关联之后的常规流程
+
+当 `main` 已经切换到基于上游真实历史的分支后，后续升级就可以用常规流程：
+
 ```bash
 # 1. 拉上游
 git fetch upstream
@@ -453,20 +506,34 @@ git fetch upstream
 # 2. 更新 main
 git checkout main
 git merge upstream/main
+
+# 3. 推送到自己的 origin
 git push origin main
 
-# 3. 回到自己的功能主线
+# 4. 回到自己的功能主线
 git checkout feat/vendor-dashboard
+
+# 5. rebase 到最新 main
 git rebase main
 
-# 4. 查找本地定制点
+# 6. 查找本地定制点
 grep -R "\[bmai-fork\]" -n backend frontend
 
-# 5. 重新构建镜像
+# 7. 重新构建镜像
 sudo docker build -t sub2api-bmai:<新版本号> .
 
-# 6. 走预览 -> 切正式 -> 回滚预案
+# 8. 走预览 -> 切正式 -> 回滚预案
 ```
+
+### 12.3 本次真实演练结论
+
+当前文档的大方向是对的，但需要补充这个前提：
+- **第一次升级**：用“归档 main + 基于 upstream/main 新建升级分支 + cherry-pick 本地提交”的方式
+- **后续升级**：等 `main` 已切到上游真实历史后，再用普通 `merge upstream/main`
+
+换句话说：
+- 这次演练说明我们当前的二开改动是可以平滑迁移到上游 `v0.1.119` 的
+- 文档需要明确区分“第一次建立历史关联”和“后续常规升级”
 
 ---
 
