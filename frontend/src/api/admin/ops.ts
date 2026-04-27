@@ -1029,6 +1029,7 @@ export async function getDashboardSnapshotV2(
   end_time?: string
   platform?: string
   group_id?: number | null
+  account_id?: number | null
   mode?: OpsQueryMode
   },
   options: OpsRequestOptions = {}
