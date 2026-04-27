@@ -137,6 +137,8 @@ git checkout -b feat/vendor-dashboard
 - [ ] 使用 `__preview_enable` 做过外部 UI 验证
 - [ ] 核心筛选/调用/登录功能已验证
 - [ ] 已记录当前正式镜像 tag，便于回滚
+- [ ] DB/Redis 容器挂载源是本地目录而非 named volume（见 13A.3）
+- [ ] 发版后做过数据验收：users/accounts/api_keys 数量正常（见 13A.4）
 
 可选检查：
 ```bash
@@ -491,6 +493,127 @@ sudo docker build -t sub2api-bmai:<新版本号> .
 修复：
 - 临时改为手工 `docker run` 管理正式容器
 - 后续再修 compose
+
+### 13.3 问题三：正式服务连到了空数据库（最严重）
+
+现象：
+- 正式服务 HTTP 返回 200，看起来正常
+- 但登录不上、用户/账号/API Key 全部为空
+
+根因：
+- 原始部署使用的是 `docker-compose.local.yml`，数据持久化方式是**本地目录 bind mount**：
+  - `./postgres_data:/var/lib/postgresql/data`
+  - `./redis_data:/data`
+- 恢复服务时误用了 `docker-compose.yml`（默认 compose 文件），它的持久化方式是 **Docker named volume**：
+  - `postgres_data:/var/lib/postgresql/data`（注意没有 `./` 前缀）
+  - `redis_data:/data`
+- 这两种写法指向**完全不同的数据存储位置**：
+  - `./postgres_data` → 宿主机 `/data/cc/sub2api/deploy/postgres_data`（真实生产数据）
+  - `postgres_data:` → Docker volume `/var/lib/docker/volumes/deploy_postgres_data/_data`（新建空卷）
+- compose 发现 named volume 不存在时，自动创建了新的空卷
+- 新 postgres 容器挂载空卷，触发 `initdb`，产生了全新空库
+- 后续手工恢复时沿用了错误的 volume 名，没有切回本地目录
+- 最终应用连上了空库，HTTP 正常但业务数据全部缺失
+
+数据是否丢失：
+- **没有丢失**
+- 旧数据始终在 `/data/cc/sub2api/deploy/postgres_data` 目录中
+- compose 重建只是创建了新的独立 volume，没有碰旧目录
+- 最终通过把 postgres 容器切回旧本地目录恢复
+
+时间线：
+| 时间 | 事件 |
+|---|---|
+| 4月16日 | 原始部署，使用 `docker-compose.local.yml`，数据落盘到 `./postgres_data` |
+| 4月27日 16:30:19 | 误执行 `docker compose up -d --force-recreate sub2api`（默认加载 `docker-compose.yml`） |
+| 同一秒 | compose 自动创建 `deploy_postgres_data` / `deploy_redis_data` / `deploy_sub2api_data` 三个新空 volume |
+| 同一秒 | 新 postgres 容器挂载空 volume，initdb 初始化空库 |
+| 同一秒 | redis 绑定 6379 端口冲突，整个 compose 启动链卡住 |
+| 16:47 | 手工恢复时沿用了新空 volume，正式服务连上空库 |
+| 17:01 | 排查发现旧本地目录数据完整，切回旧目录，数据恢复 |
+
+---
+
+## 13A. 数据源安全守则（高危，必须遵守）
+
+### 13A.1 生产数据的真实位置
+
+当前生产数据**不在 Docker named volume 里**，而在宿主机本地目录：
+
+| 数据 | 真实路径 | 错误路径（不要用） |
+|---|---|---|
+| PostgreSQL | `/data/cc/sub2api/deploy/postgres_data` | `/var/lib/docker/volumes/deploy_postgres_data/_data` |
+| Redis | `/data/cc/sub2api/deploy/redis_data` | `/var/lib/docker/volumes/deploy_redis_data/_data` |
+| 应用配置 | `/data/cc/sub2api/deploy/data` | `/var/lib/docker/volumes/deploy_sub2api_data/_data` |
+
+### 13A.2 为什么会搞混
+
+`deploy/` 目录下有多个 compose 文件，它们的数据持久化方式**不同**：
+
+| compose 文件 | PostgreSQL 挂载 | Redis 挂载 | 适用场景 |
+|---|---|---|---|
+| `docker-compose.local.yml` | `./postgres_data`（本地目录） | `./redis_data`（本地目录） | **当前生产实际使用的** |
+| `docker-compose.yml` | `postgres_data:`（named volume） | `redis_data:`（named volume） | 全新部署用，不适用于当前环境 |
+| `docker-compose.dev.yml` | `./postgres_data`（本地目录） | `./redis_data`（本地目录） | 开发环境 |
+
+在 `deploy/` 目录下直接执行 `docker compose up` 会默认加载 `docker-compose.yml`，而不是 `docker-compose.local.yml`。
+
+### 13A.3 发版前必须核对数据源
+
+每次重建 DB/Redis 容器后，必须执行：
+
+```bash
+# 核对 PostgreSQL 挂载源
+sudo docker inspect sub2api-postgres --format '{{range .Mounts}}{{.Source}} -> {{.Destination}}{{println}}{{end}}'
+
+# 核对 Redis 挂载源
+sudo docker inspect sub2api-redis --format '{{range .Mounts}}{{.Source}} -> {{.Destination}}{{println}}{{end}}'
+```
+
+必须看到：
+```
+/data/cc/sub2api/deploy/postgres_data -> /var/lib/postgresql/data
+/data/cc/sub2api/deploy/redis_data -> /data
+```
+
+如果看到的是：
+```
+/var/lib/docker/volumes/deploy_postgres_data/_data -> /var/lib/postgresql/data
+```
+
+**说明连错库了，必须立即停止并切回本地目录。**
+
+### 13A.4 发版后必须做数据验收
+
+上线后不能只看 HTTP 200，必须验数据：
+
+```bash
+# 用户数量（当前应为 2）
+sudo docker exec sub2api-postgres psql -U sub2api -d sub2api -Atc "select count(*) from users;"
+
+# 账号数量（当前应为 4）
+sudo docker exec sub2api-postgres psql -U sub2api -d sub2api -Atc "select count(*) from accounts;"
+
+# API Key 数量（当前应为 7）
+sudo docker exec sub2api-postgres psql -U sub2api -d sub2api -Atc "select count(*) from api_keys;"
+
+# 抽查管理员用户
+sudo docker exec sub2api-postgres psql -U sub2api -d sub2api -c "select id,email,role,status from users where role='admin';"
+```
+
+如果任何一项为 0，说明数据源不对，参考 13A.3 排查。
+
+### 13A.5 绝对禁止的操作
+
+1. **禁止在 `deploy/` 目录下直接执行 `docker compose up -d`**
+   - 默认加载的 `docker-compose.yml` 会创建新 named volume，覆盖数据源
+2. **禁止删除 `/data/cc/sub2api/deploy/postgres_data` 目录**
+   - 这是生产数据的唯一真实副本
+3. **禁止在发版时顺手重建 DB/Redis 容器**
+   - 发版只动应用容器 `sub2api`，不动 `sub2api-postgres` / `sub2api-redis`
+   - 除非明确是在做数据库维护
+4. **禁止删除 `deploy_postgres_data` named volume**
+   - 虽然当前是空的，但删除操作本身可能误删其他 volume
 
 ---
 
