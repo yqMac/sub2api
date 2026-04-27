@@ -1010,6 +1010,7 @@ export async function getDashboardOverview(
   end_time?: string
   platform?: string
   group_id?: number | null
+  account_id?: number | null
   mode?: OpsQueryMode
   },
   options: OpsRequestOptions = {}
@@ -1046,6 +1047,7 @@ export async function getThroughputTrend(
   end_time?: string
   platform?: string
   group_id?: number | null
+  account_id?: number | null
   mode?: OpsQueryMode
   },
   options: OpsRequestOptions = {}
@@ -1064,6 +1066,7 @@ export async function getLatencyHistogram(
   end_time?: string
   platform?: string
   group_id?: number | null
+  account_id?: number | null
   mode?: OpsQueryMode
   },
   options: OpsRequestOptions = {}
@@ -1082,6 +1085,7 @@ export async function getErrorTrend(
   end_time?: string
   platform?: string
   group_id?: number | null
+  account_id?: number | null
   mode?: OpsQueryMode
   },
   options: OpsRequestOptions = {}
@@ -1100,6 +1104,7 @@ export async function getErrorDistribution(
   end_time?: string
   platform?: string
   group_id?: number | null
+  account_id?: number | null
   mode?: OpsQueryMode
   },
   options: OpsRequestOptions = {}

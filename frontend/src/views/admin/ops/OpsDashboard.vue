@@ -15,6 +15,7 @@
         :overview="overview"
         :platform="platform"
         :group-id="groupId"
+        :account-id="accountId"
         :time-range="timeRange"
         :query-mode="queryMode"
         :loading="loading"
@@ -28,6 +29,7 @@
         @update:time-range="onTimeRangeChange"
         @update:platform="onPlatformChange"
         @update:group="onGroupChange"
+        @update:account="onAccountChange"
         @update:query-mode="onQueryModeChange"
         @update:custom-time-range="onCustomTimeRangeChange"
         @refresh="fetchData"
@@ -192,6 +194,7 @@ const lastUpdated = ref<Date | null>(new Date())
 const timeRange = ref<TimeRange>('1h')
 const platform = ref<string>('')
 const groupId = ref<number | null>(null)
+const accountId = ref<number | null>(null) // [bmai-fork] upstream provider account filter
 const queryMode = ref<QueryMode>('auto')
 const customStartTime = ref<string | null>(null)
 const customEndTime = ref<string | null>(null)
@@ -203,6 +206,7 @@ const QUERY_KEYS = {
   timeRange: 'tr',
   platform: 'platform',
   groupId: 'group_id',
+  accountId: 'account_id',
   queryMode: 'mode',
   fullscreen: 'fullscreen',
 
@@ -283,6 +287,10 @@ const applyRouteQueryToState = () => {
   const groupIdRaw = readQueryNumber(QUERY_KEYS.groupId)
   groupId.value = typeof groupIdRaw === 'number' && groupIdRaw > 0 ? groupIdRaw : null
 
+  // [bmai-fork] restore account_id from URL
+  const accountIdRaw = readQueryNumber(QUERY_KEYS.accountId)
+  accountId.value = typeof accountIdRaw === 'number' && accountIdRaw > 0 ? accountIdRaw : null
+
   const nextMode = readQueryString(QUERY_KEYS.queryMode)
   if (nextMode && allowedQueryModes.has(nextMode as QueryMode)) {
     queryMode.value = nextMode as QueryMode
@@ -322,6 +330,8 @@ const buildQueryFromState = () => {
   if (timeRange.value !== '1h') next[QUERY_KEYS.timeRange] = timeRange.value
   if (platform.value) next[QUERY_KEYS.platform] = platform.value
   if (typeof groupId.value === 'number' && groupId.value > 0) next[QUERY_KEYS.groupId] = String(groupId.value)
+  // [bmai-fork]
+  if (typeof accountId.value === 'number' && accountId.value > 0) next[QUERY_KEYS.accountId] = String(accountId.value)
   if (queryMode.value !== 'auto') next[QUERY_KEYS.queryMode] = queryMode.value
 
   return next
@@ -498,6 +508,11 @@ function onGroupChange(v: string | number | boolean | null) {
   }
 }
 
+// [bmai-fork]
+function onAccountChange(v: number | null) {
+  accountId.value = typeof v === 'number' && v > 0 ? v : null
+}
+
 function onQueryModeChange(v: string | number | boolean | null) {
   if (typeof v !== 'string') return
   if (!allowedQueryModes.has(v as QueryMode)) return
@@ -516,6 +531,7 @@ function buildApiParams() {
   const params: any = {
     platform: platform.value || undefined,
     group_id: groupId.value ?? undefined,
+    account_id: accountId.value ?? undefined,
     mode: queryMode.value
   }
 
@@ -538,6 +554,7 @@ function buildSwitchTrendParams() {
   const params: any = {
     platform: platform.value || undefined,
     group_id: groupId.value ?? undefined,
+    account_id: accountId.value ?? undefined,
     mode: queryMode.value
   }
   const endTime = new Date()
@@ -737,7 +754,7 @@ async function fetchData() {
 }
 
 watch(
-  () => [timeRange.value, platform.value, groupId.value, queryMode.value] as const,
+  () => [timeRange.value, platform.value, groupId.value, accountId.value, queryMode.value] as const,
   () => {
     if (isApplyingRouteQuery.value) return
     if (opsEnabled.value) {
@@ -755,13 +772,14 @@ watch(
     const prevTimeRange = timeRange.value
     const prevPlatform = platform.value
     const prevGroupId = groupId.value
+    const prevAccountId = accountId.value
 
     isApplyingRouteQuery.value = true
     applyRouteQueryToState()
     isApplyingRouteQuery.value = false
 
     const changed =
-      prevTimeRange !== timeRange.value || prevPlatform !== platform.value || prevGroupId !== groupId.value
+      prevTimeRange !== timeRange.value || prevPlatform !== platform.value || prevGroupId !== groupId.value || prevAccountId !== accountId.value
     if (changed) {
       if (opsEnabled.value) {
         fetchData()

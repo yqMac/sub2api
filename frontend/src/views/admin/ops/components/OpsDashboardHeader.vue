@@ -17,6 +17,7 @@ interface Props {
   overview?: OpsDashboardOverview | null
   platform: string
   groupId: number | null
+  accountId: number | null
   timeRange: string
   queryMode: string
   loading: boolean
@@ -32,6 +33,7 @@ interface Props {
 interface Emits {
   (e: 'update:platform', value: string): void
   (e: 'update:group', value: number | null): void
+  (e: 'update:account', value: number | null): void
   (e: 'update:timeRange', value: string): void
   (e: 'update:queryMode', value: string): void
   (e: 'update:customTimeRange', startTime: string, endTime: string): void
@@ -105,6 +107,8 @@ function formatCustomTimeRangeLabel(startTime: string, endTime: string): string 
 }
 
 const groups = ref<Array<{ id: number; name: string; platform: string }>>([])
+// [bmai-fork] upstream provider accounts for filtering
+const accounts = ref<Array<{ id: number; name: string; platform: string }>>([])
 
 const platformOptions = computed(() => [
   { value: '', label: t('common.all') },
@@ -139,6 +143,12 @@ const groupOptions = computed(() => {
   return [{ value: null, label: t('common.all') }, ...filtered.map((g) => ({ value: g.id, label: g.name }))]
 })
 
+// [bmai-fork] account selector options, filtered by platform
+const accountOptions = computed(() => {
+  const filtered = props.platform ? accounts.value.filter((a) => a.platform === props.platform) : accounts.value
+  return [{ value: null, label: t('common.all') }, ...filtered.map((a) => ({ value: a.id, label: `#${a.id} ${a.name}` }))]
+})
+
 watch(
   () => props.platform,
   (newPlatform) => {
@@ -158,6 +168,14 @@ onMounted(async () => {
     console.error('[OpsDashboardHeader] Failed to load groups', e)
     groups.value = []
   }
+  // [bmai-fork] load upstream provider accounts
+  try {
+    const res = await adminAPI.accounts.list(1, 500, { lite: 'true' })
+    accounts.value = (res.items || []).map((a: any) => ({ id: a.id, name: a.name || a.platform, platform: a.platform }))
+  } catch (e) {
+    console.error('[OpsDashboardHeader] Failed to load accounts', e)
+    accounts.value = []
+  }
 })
 
 function handlePlatformChange(val: string | number | boolean | null) {
@@ -171,6 +189,16 @@ function handleGroupChange(val: string | number | boolean | null) {
   }
   const id = typeof val === 'number' ? val : Number.parseInt(String(val), 10)
   emit('update:group', Number.isFinite(id) && id > 0 ? id : null)
+}
+
+// [bmai-fork]
+function handleAccountChange(val: string | number | boolean | null) {
+  if (val === null || val === '' || typeof val === 'boolean') {
+    emit('update:account', null)
+    return
+  }
+  const id = typeof val === 'number' ? val : Number.parseInt(String(val), 10)
+  emit('update:account', Number.isFinite(id) && id > 0 ? id : null)
 }
 
 function handleTimeRangeChange(val: string | number | boolean | null) {
@@ -907,6 +935,15 @@ function handleToolbarRefresh() {
             :options="groupOptions"
             class="w-full sm:w-[160px]"
             @update:model-value="handleGroupChange"
+          />
+
+          <!-- [bmai-fork] upstream provider account selector -->
+          <Select
+            :model-value="accountId"
+            :options="accountOptions"
+            class="w-full sm:w-[180px]"
+            placeholder="供应商账号"
+            @update:model-value="handleAccountChange"
           />
 
           <div class="mx-1 hidden h-4 w-[1px] bg-gray-200 dark:bg-dark-700 sm:block"></div>

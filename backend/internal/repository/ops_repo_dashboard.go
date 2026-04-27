@@ -32,6 +32,10 @@ func (r *opsRepository) GetDashboardOverview(ctx context.Context, filter *servic
 	if !mode.IsValid() {
 		mode = service.OpsQueryModeRaw
 	}
+	// [bmai-fork] preagg tables don't have account-level granularity; force raw when filtering by account
+	if filter.AccountID != nil && *filter.AccountID > 0 {
+		mode = service.OpsQueryModeRaw
+	}
 
 	switch mode {
 	case service.OpsQueryModePreagg:
@@ -129,6 +133,7 @@ func (r *opsRepository) getDashboardOverviewRaw(ctx context.Context, filter *ser
 		EndTime:   end,
 		Platform:  strings.TrimSpace(filter.Platform),
 		GroupID:   filter.GroupID,
+		AccountID: filter.AccountID, // [bmai-fork]
 
 		SuccessCount:         successCount,
 		ErrorCountTotal:      errorTotal,
@@ -309,6 +314,7 @@ func (r *opsRepository) getDashboardOverviewPreaggregated(ctx context.Context, f
 		EndTime:   end,
 		Platform:  strings.TrimSpace(filter.Platform),
 		GroupID:   filter.GroupID,
+		AccountID: filter.AccountID, // [bmai-fork]
 
 		SuccessCount:         successCount,
 		ErrorCountTotal:      errorTotal,
@@ -958,14 +964,16 @@ func isQueryTimeoutErr(err error) bool {
 func buildUsageWhere(filter *service.OpsDashboardFilter, start, end time.Time, startIndex int) (join string, where string, args []any, nextIndex int) {
 	platform := ""
 	groupID := (*int64)(nil)
+	accountID := (*int64)(nil) // [bmai-fork]
 	if filter != nil {
 		platform = strings.TrimSpace(strings.ToLower(filter.Platform))
 		groupID = filter.GroupID
+		accountID = filter.AccountID // [bmai-fork]
 	}
 
 	idx := startIndex
-	clauses := make([]string, 0, 4)
-	args = make([]any, 0, 4)
+	clauses := make([]string, 0, 5)
+	args = make([]any, 0, 5)
 
 	args = append(args, start)
 	clauses = append(clauses, fmt.Sprintf("ul.created_at >= $%d", idx))
@@ -987,6 +995,12 @@ func buildUsageWhere(filter *service.OpsDashboardFilter, start, end time.Time, s
 		clauses = append(clauses, fmt.Sprintf("COALESCE(NULLIF(g.platform,''), a.platform) = $%d", idx))
 		idx++
 	}
+	// [bmai-fork] filter by upstream provider account
+	if accountID != nil && *accountID > 0 {
+		args = append(args, *accountID)
+		clauses = append(clauses, fmt.Sprintf("ul.account_id = $%d", idx))
+		idx++
+	}
 
 	where = "WHERE " + strings.Join(clauses, " AND ")
 	return join, where, args, idx
@@ -995,14 +1009,16 @@ func buildUsageWhere(filter *service.OpsDashboardFilter, start, end time.Time, s
 func buildErrorWhere(filter *service.OpsDashboardFilter, start, end time.Time, startIndex int) (where string, args []any, nextIndex int) {
 	platform := ""
 	groupID := (*int64)(nil)
+	accountID := (*int64)(nil) // [bmai-fork]
 	if filter != nil {
 		platform = strings.TrimSpace(strings.ToLower(filter.Platform))
 		groupID = filter.GroupID
+		accountID = filter.AccountID // [bmai-fork]
 	}
 
 	idx := startIndex
-	clauses := make([]string, 0, 5)
-	args = make([]any, 0, 5)
+	clauses := make([]string, 0, 6)
+	args = make([]any, 0, 6)
 
 	args = append(args, start)
 	clauses = append(clauses, fmt.Sprintf("created_at >= $%d", idx))
@@ -1021,6 +1037,12 @@ func buildErrorWhere(filter *service.OpsDashboardFilter, start, end time.Time, s
 	if platform != "" {
 		args = append(args, platform)
 		clauses = append(clauses, fmt.Sprintf("platform = $%d", idx))
+		idx++
+	}
+	// [bmai-fork] filter by upstream provider account
+	if accountID != nil && *accountID > 0 {
+		args = append(args, *accountID)
+		clauses = append(clauses, fmt.Sprintf("account_id = $%d", idx))
 		idx++
 	}
 
