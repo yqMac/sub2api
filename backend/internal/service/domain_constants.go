@@ -90,6 +90,10 @@ const OIDCConnectSyntheticEmailDomain = "@oidc-connect.invalid"
 // WeChatConnectSyntheticEmailDomain 是 WeChat Connect 用户的合成邮箱后缀（RFC 保留域名）。
 const WeChatConnectSyntheticEmailDomain = "@wechat-connect.invalid"
 
+// FeishuConnectSyntheticEmailDomain 是飞书登录用户的合成邮箱后缀（RFC 保留域名）。
+// [bmai-fork] feishu
+const FeishuConnectSyntheticEmailDomain = "@feishu-connect.invalid"
+
 // Setting keys
 const (
 	// 注册设置

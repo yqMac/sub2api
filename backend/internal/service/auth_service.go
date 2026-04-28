@@ -994,6 +994,8 @@ func inferLegacySignupSource(email string) string {
 		return "oidc"
 	case strings.HasSuffix(normalized, WeChatConnectSyntheticEmailDomain):
 		return "wechat"
+	case strings.HasSuffix(normalized, FeishuConnectSyntheticEmailDomain): // [bmai-fork] feishu
+		return "feishu"
 	default:
 		return "email"
 	}
@@ -1082,7 +1084,8 @@ func isReservedEmail(email string) bool {
 	normalized := strings.ToLower(strings.TrimSpace(email))
 	return strings.HasSuffix(normalized, LinuxDoConnectSyntheticEmailDomain) ||
 		strings.HasSuffix(normalized, OIDCConnectSyntheticEmailDomain) ||
-		strings.HasSuffix(normalized, WeChatConnectSyntheticEmailDomain)
+		strings.HasSuffix(normalized, WeChatConnectSyntheticEmailDomain) ||
+		strings.HasSuffix(normalized, FeishuConnectSyntheticEmailDomain) // [bmai-fork] feishu
 }
 
 // GenerateToken 生成JWT access token
