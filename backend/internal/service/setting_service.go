@@ -481,6 +481,10 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 	if oidcProviderName == "" {
 		oidcProviderName = "OIDC"
 	}
+	feishuEnabled := false // [bmai-fork] feishu
+	if s.cfg != nil {
+		feishuEnabled = s.cfg.Feishu.Enabled
+	}
 	weChatEnabled, weChatOpenEnabled, weChatMPEnabled, weChatMobileEnabled := s.weChatOAuthCapabilitiesFromSettings(settings)
 
 	// Password reset requires email verification to be enabled
@@ -533,6 +537,7 @@ func (s *SettingService) GetPublicSettings(ctx context.Context) (*PublicSettings
 		PaymentEnabled:                   settings[SettingPaymentEnabled] == "true",
 		OIDCOAuthEnabled:                 oidcEnabled,
 		OIDCOAuthProviderName:            oidcProviderName,
+		FeishuOAuthEnabled:               feishuEnabled, // [bmai-fork] feishu
 		BalanceLowNotifyEnabled:          settings[SettingKeyBalanceLowNotifyEnabled] == "true",
 		AccountQuotaNotifyEnabled:        settings[SettingKeyAccountQuotaNotifyEnabled] == "true",
 		BalanceLowNotifyThreshold:        balanceLowNotifyThreshold,
@@ -676,6 +681,7 @@ type PublicSettingsInjectionPayload struct {
 	WeChatOAuthMobileEnabled         bool            `json:"wechat_oauth_mobile_enabled"`
 	OIDCOAuthEnabled                 bool            `json:"oidc_oauth_enabled"`
 	OIDCOAuthProviderName            string          `json:"oidc_oauth_provider_name"`
+	FeishuOAuthEnabled               bool            `json:"feishu_oauth_enabled"` // [bmai-fork] feishu
 	BackendModeEnabled               bool            `json:"backend_mode_enabled"`
 	PaymentEnabled                   bool            `json:"payment_enabled"`
 	Version                          string          `json:"version"`
@@ -732,6 +738,7 @@ func (s *SettingService) GetPublicSettingsForInjection(ctx context.Context) (any
 		WeChatOAuthMobileEnabled:         settings.WeChatOAuthMobileEnabled,
 		OIDCOAuthEnabled:                 settings.OIDCOAuthEnabled,
 		OIDCOAuthProviderName:            settings.OIDCOAuthProviderName,
+		FeishuOAuthEnabled:               settings.FeishuOAuthEnabled, // [bmai-fork] feishu
 		BackendModeEnabled:               settings.BackendModeEnabled,
 		PaymentEnabled:                   settings.PaymentEnabled,
 		Version:                          s.version,

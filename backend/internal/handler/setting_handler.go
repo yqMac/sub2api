@@ -63,6 +63,7 @@ func (h *SettingHandler) GetPublicSettings(c *gin.Context) {
 		WeChatOAuthMobileEnabled:         settings.WeChatOAuthMobileEnabled,
 		OIDCOAuthEnabled:                 settings.OIDCOAuthEnabled,
 		OIDCOAuthProviderName:            settings.OIDCOAuthProviderName,
+		FeishuOAuthEnabled:               settings.FeishuOAuthEnabled, // [bmai-fork] feishu
 		BackendModeEnabled:               settings.BackendModeEnabled,
 		PaymentEnabled:                   settings.PaymentEnabled,
 		Version:                          h.version,
