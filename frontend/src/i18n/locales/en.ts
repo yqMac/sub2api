@@ -465,8 +465,17 @@ export default {
       invitationRequired: 'This Linux.do account is not yet registered. The site requires an invitation code — please enter one to complete registration.',
       invalidPendingToken: 'The registration token has expired. Please sign in with Linux.do again.',
       completeRegistration: 'Complete Registration',
-      completing: 'Completing registration…',
-      completeRegistrationFailed: 'Registration failed. Please check your invitation code and try again.'
+      invitationCodePlaceholder: 'Enter invitation code',
+      submitInvitation: 'Submit and Register',
+      registrationFailed: 'Registration failed. Please try again.',
+      registrationNetworkError: 'Network error, please try again later.',
+      registrationSuccess: 'Registration completed. Redirecting...',
+      unexpectedResponse: 'Unexpected response. Please try again.',
+      creatingAccount: 'Creating account, please wait...',
+      pageDescription: 'Completing Linux.do sign-in registration',
+    },
+    feishu: {
+      signIn: 'Sign in with Feishu',
     },
     oidc: {
       signIn: 'Continue with {providerName}',

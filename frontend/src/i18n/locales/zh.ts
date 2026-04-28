@@ -467,6 +467,9 @@ export default {
       completing: '正在完成注册...',
       completeRegistrationFailed: '注册失败，请检查邀请码后重试。'
     },
+    feishu: {
+      signIn: '使用飞书登录',
+    },
     oidc: {
       signIn: '使用 {providerName} 登录',
       callbackTitle: '正在完成 {providerName} 登录',

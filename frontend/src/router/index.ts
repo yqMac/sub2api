@@ -86,6 +86,12 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/auth/feishu/callback',
+    name: 'auth-feishu-callback',
+    // [bmai-fork] feishu
+    component: () => import('@/views/auth/LinuxDoCallbackView.vue'),
+  },
+  {
     path: '/auth/wechat/callback',
     name: 'WeChatOAuthCallback',
     component: () => import('@/views/auth/WechatCallbackView.vue'),
@@ -597,6 +603,7 @@ const BACKEND_MODE_ALLOWED_PATHS = ['/login', '/key-usage', '/setup', '/payment/
 const BACKEND_MODE_CALLBACK_PATHS = [
   '/auth/callback',
   '/auth/linuxdo/callback',
+  '/auth/feishu/callback',
   '/auth/oidc/callback',
   '/auth/wechat/callback',
   '/auth/wechat/payment/callback',
