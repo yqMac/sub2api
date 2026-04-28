@@ -707,3 +707,44 @@ sudo docker logs --tail=100 sub2api-test
 3. **找一个窗口修 compose**：移除 postgres/redis 端口映射
 4. **补一条 snapshot-v2 + account_id 的回归测试**，避免同类问题再出现
 5. **长期**再考虑蓝绿/双正式位方案
+
+---
+
+## 启用飞书登录（首次部署）[bmai-fork]
+
+### 前置准备（飞书开放平台）
+
+1. 在 [open.feishu.cn](https://open.feishu.cn/) 创建"企业自建应用"，记录 App ID / App Secret
+2. 在"安全设置 → 重定向 URL"登记：`https://aiapi.yqmac.com/api/v1/auth/oauth/feishu/callback`
+3. 在"权限管理"开启：`contact:user.email:readonly`、`contact:user.base:readonly`
+4. 在"应用基础信息"读取本公司 `tenant_key`
+
+### 配置
+
+编辑 `deploy/.env`：
+
+```
+FEISHU_CONNECT_ENABLED=true
+FEISHU_CONNECT_CLIENT_ID=<App ID>
+FEISHU_CONNECT_CLIENT_SECRET=<App Secret>
+FEISHU_CONNECT_REDIRECT_URL=https://aiapi.yqmac.com/api/v1/auth/oauth/feishu/callback
+FEISHU_CONNECT_ALLOWED_TENANT_KEYS=<本公司 tenant_key>
+FEISHU_CONNECT_REQUIRE_ENTERPRISE_EMAIL=true
+```
+
+### 发布流程
+
+走标准发布流程：先在 8181 预览 → cookie 灰度验证 → 替换 8180。
+
+### 验证清单
+
+- [ ] 登录页飞书按钮可见（`/__preview_enable` 后访问）
+- [ ] 点击后跳到 `passport.feishu.cn`
+- [ ] 授权完成后回到 `/auth/feishu/callback`
+- [ ] 本公司员工可完成注册/绑定
+- [ ] 外公司账号被 `tenant_not_allowed` 拒绝
+- [ ] DB 验证：
+  ```bash
+  sudo docker exec sub2api-postgres psql -U sub2api -d sub2api -Atc \
+    "select user_id, provider_type, provider_subject from auth_identities where provider_type='feishu' order by id desc limit 5;"
+  ```
