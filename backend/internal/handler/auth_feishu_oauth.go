@@ -271,7 +271,7 @@ func (h *AuthHandler) FeishuOAuthCallback(c *gin.Context) {
 		"suggested_display_name": strings.TrimSpace(userClaims.DisplayName),
 		"suggested_avatar_url":   strings.TrimSpace(userClaims.AvatarURL),
 	}
-	if compatEmail != "" && !strings.EqualFold(compatEmail, resolvedEmail) {
+	if compatEmail != "" {
 		upstreamClaims["compat_email"] = compatEmail
 	}
 
