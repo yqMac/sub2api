@@ -216,6 +216,7 @@ type PublicSettings struct {
 	PaymentEnabled           bool
 	OIDCOAuthEnabled         bool
 	OIDCOAuthProviderName    string
+	FeishuOAuthEnabled       bool // [bmai-fork] feishu
 	Version                  string
 
 	BalanceLowNotifyEnabled     bool
