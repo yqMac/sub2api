@@ -459,6 +459,7 @@ func (h *AuthHandler) findOAuthIdentityUser(ctx context.Context, identity servic
 func (h *AuthHandler) BindLinuxDoOAuthLogin(c *gin.Context) { h.bindPendingOAuthLogin(c, "linuxdo") }
 func (h *AuthHandler) BindOIDCOAuthLogin(c *gin.Context)    { h.bindPendingOAuthLogin(c, "oidc") }
 func (h *AuthHandler) BindWeChatOAuthLogin(c *gin.Context)  { h.bindPendingOAuthLogin(c, "wechat") }
+func (h *AuthHandler) BindFeishuOAuthLogin(c *gin.Context)  { h.bindPendingOAuthLogin(c, "feishu") } // [bmai-fork] feishu
 func (h *AuthHandler) BindPendingOAuthLogin(c *gin.Context) { h.bindPendingOAuthLogin(c, "") }
 
 func (h *AuthHandler) CreateLinuxDoOAuthAccount(c *gin.Context) {
@@ -469,6 +470,10 @@ func (h *AuthHandler) CreateOIDCOAuthAccount(c *gin.Context) { h.createPendingOA
 
 func (h *AuthHandler) CreateWeChatOAuthAccount(c *gin.Context) {
 	h.createPendingOAuthAccount(c, "wechat")
+}
+
+func (h *AuthHandler) CreateFeishuOAuthAccount(c *gin.Context) { // [bmai-fork] feishu
+	h.createPendingOAuthAccount(c, "feishu")
 }
 
 func (h *AuthHandler) CreatePendingOAuthAccount(c *gin.Context) {
