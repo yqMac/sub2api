@@ -19,6 +19,7 @@ var authProviderTypes = map[string]struct{}{
 	"linuxdo": {},
 	"oidc":    {},
 	"wechat":  {},
+	"feishu":  {}, // [bmai-fork] feishu
 }
 
 func validateAuthProviderType(value string) error {
