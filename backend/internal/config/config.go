@@ -72,6 +72,7 @@ type Config struct {
 	LinuxDo                 LinuxDoConnectConfig          `mapstructure:"linuxdo_connect"`
 	WeChat                  WeChatConnectConfig           `mapstructure:"wechat_connect"`
 	OIDC                    OIDCConnectConfig             `mapstructure:"oidc_connect"`
+	Feishu                  FeishuConnectConfig           `mapstructure:"feishu_connect"` // [bmai-fork] feishu
 	Default                 DefaultConfig                 `mapstructure:"default"`
 	RateLimit               RateLimitConfig               `mapstructure:"rate_limit"`
 	Pricing                 PricingConfig                 `mapstructure:"pricing"`
@@ -235,6 +236,29 @@ type OIDCConnectConfig struct {
 
 	// 可选：用于从 userinfo JSON 中提取字段的 gjson 路径。
 	// 为空时，服务端会尝试一组常见字段名。
+	UserInfoEmailPath    string `mapstructure:"userinfo_email_path"`
+	UserInfoIDPath       string `mapstructure:"userinfo_id_path"`
+	UserInfoUsernamePath string `mapstructure:"userinfo_username_path"`
+}
+
+// FeishuConnectConfig 飞书 (Suite Passport OAuth 2.0) 登录配置。
+// [bmai-fork] feishu
+type FeishuConnectConfig struct {
+	Enabled             bool   `mapstructure:"enabled"`
+	ClientID            string `mapstructure:"client_id"`
+	ClientSecret        string `mapstructure:"client_secret"`
+	AuthorizeURL        string `mapstructure:"authorize_url"`
+	TokenURL            string `mapstructure:"token_url"`
+	UserInfoURL         string `mapstructure:"userinfo_url"`
+	Scopes              string `mapstructure:"scopes"`
+	RedirectURL         string `mapstructure:"redirect_url"`
+	FrontendRedirectURL string `mapstructure:"frontend_redirect_url"`
+	TokenAuthMethod     string `mapstructure:"token_auth_method"`
+	UsePKCE             bool   `mapstructure:"use_pkce"`
+
+	AllowedTenantKeys      []string `mapstructure:"allowed_tenant_keys"`
+	RequireEnterpriseEmail bool     `mapstructure:"require_enterprise_email"`
+
 	UserInfoEmailPath    string `mapstructure:"userinfo_email_path"`
 	UserInfoIDPath       string `mapstructure:"userinfo_id_path"`
 	UserInfoUsernamePath string `mapstructure:"userinfo_username_path"`
@@ -1255,6 +1279,34 @@ func load(allowMissingJWTSecret bool) (*Config, error) {
 	cfg.LinuxDo.UserInfoUsernamePath = strings.TrimSpace(cfg.LinuxDo.UserInfoUsernamePath)
 	applyLegacyWeChatConnectEnvCompatibility(&cfg.WeChat)
 	normalizeWeChatConnectConfig(&cfg.WeChat)
+	// [bmai-fork] feishu: defaults
+	if strings.TrimSpace(cfg.Feishu.AuthorizeURL) == "" {
+		cfg.Feishu.AuthorizeURL = "https://passport.feishu.cn/suite/passport/oauth/authorize"
+	}
+	if strings.TrimSpace(cfg.Feishu.TokenURL) == "" {
+		cfg.Feishu.TokenURL = "https://passport.feishu.cn/suite/passport/oauth/token"
+	}
+	if strings.TrimSpace(cfg.Feishu.UserInfoURL) == "" {
+		cfg.Feishu.UserInfoURL = "https://passport.feishu.cn/suite/passport/oauth/userinfo"
+	}
+	if strings.TrimSpace(cfg.Feishu.Scopes) == "" {
+		cfg.Feishu.Scopes = "openid offline_access contact:user.email:readonly contact:user.base:readonly"
+	}
+	if strings.TrimSpace(cfg.Feishu.TokenAuthMethod) == "" {
+		cfg.Feishu.TokenAuthMethod = "client_secret_post"
+	}
+	if strings.TrimSpace(cfg.Feishu.FrontendRedirectURL) == "" {
+		cfg.Feishu.FrontendRedirectURL = "/auth/feishu/callback"
+	}
+	// [bmai-fork] feishu: decode comma-separated tenant keys from env
+	if v := strings.TrimSpace(os.Getenv("FEISHU_CONNECT_ALLOWED_TENANT_KEYS")); v != "" && len(cfg.Feishu.AllowedTenantKeys) == 0 {
+		for _, t := range strings.Split(v, ",") {
+			t = strings.TrimSpace(t)
+			if t != "" {
+				cfg.Feishu.AllowedTenantKeys = append(cfg.Feishu.AllowedTenantKeys, t)
+			}
+		}
+	}
 	cfg.OIDC.ProviderName = strings.TrimSpace(cfg.OIDC.ProviderName)
 	cfg.OIDC.ClientID = strings.TrimSpace(cfg.OIDC.ClientID)
 	cfg.OIDC.ClientSecret = strings.TrimSpace(cfg.OIDC.ClientSecret)
@@ -1965,6 +2017,25 @@ func (c *Config) Validate() error {
 			return fmt.Errorf("wechat_connect.frontend_redirect_url invalid: %w", err)
 		}
 		warnIfInsecureURL("wechat_connect.frontend_redirect_url", weChat.FrontendRedirectURL)
+	}
+	// [bmai-fork] feishu: defaults
+	if strings.TrimSpace(c.Feishu.AuthorizeURL) == "" {
+		c.Feishu.AuthorizeURL = "https://passport.feishu.cn/suite/passport/oauth/authorize"
+	}
+	if strings.TrimSpace(c.Feishu.TokenURL) == "" {
+		c.Feishu.TokenURL = "https://passport.feishu.cn/suite/passport/oauth/token"
+	}
+	if strings.TrimSpace(c.Feishu.UserInfoURL) == "" {
+		c.Feishu.UserInfoURL = "https://passport.feishu.cn/suite/passport/oauth/userinfo"
+	}
+	if strings.TrimSpace(c.Feishu.Scopes) == "" {
+		c.Feishu.Scopes = "openid offline_access contact:user.email:readonly contact:user.base:readonly"
+	}
+	if strings.TrimSpace(c.Feishu.TokenAuthMethod) == "" {
+		c.Feishu.TokenAuthMethod = "client_secret_post"
+	}
+	if strings.TrimSpace(c.Feishu.FrontendRedirectURL) == "" {
+		c.Feishu.FrontendRedirectURL = "/auth/feishu/callback"
 	}
 	if c.OIDC.Enabled {
 		if strings.TrimSpace(c.OIDC.ClientID) == "" {
