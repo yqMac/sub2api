@@ -583,6 +583,14 @@ export async function completeOIDCOAuthRegistration(
   return createPendingOIDCOAuthAccount(invitationCode, decision, affiliateCode)
 }
 
+export async function completeFeishuOAuthRegistration(
+  invitationCode: string,
+  decision?: OAuthAdoptionDecision,
+  affiliateCode?: string
+): Promise<OAuthTokenResponse> {
+  return createPendingFeishuOAuthAccount(invitationCode, decision, affiliateCode)
+}
+
 export async function completeWeChatOAuthRegistration(
   invitationCode: string,
   decision?: OAuthAdoptionDecision,
@@ -592,7 +600,7 @@ export async function completeWeChatOAuthRegistration(
 }
 
 async function createPendingOAuthAccount(
-  provider: 'linuxdo' | 'oidc' | 'wechat',
+  provider: 'linuxdo' | 'oidc' | 'feishu' | 'wechat',
   invitationCode: string,
   decision?: OAuthAdoptionDecision,
   affiliateCode?: string
@@ -623,6 +631,14 @@ export async function createPendingOIDCOAuthAccount(
   affiliateCode?: string
 ): Promise<PendingOAuthCreateAccountResponse> {
   return createPendingOAuthAccount('oidc', invitationCode, decision, affiliateCode)
+}
+
+export async function createPendingFeishuOAuthAccount(
+  invitationCode: string,
+  decision?: OAuthAdoptionDecision,
+  affiliateCode?: string
+): Promise<PendingOAuthCreateAccountResponse> {
+  return createPendingOAuthAccount('feishu', invitationCode, decision, affiliateCode)
 }
 
 export async function createPendingWeChatOAuthAccount(
@@ -679,10 +695,12 @@ export const authAPI = {
   completePendingOAuthBindLogin,
   createPendingLinuxDoOAuthAccount,
   createPendingOIDCOAuthAccount,
+  createPendingFeishuOAuthAccount,
   createPendingWeChatOAuthAccount,
   exchangePendingOAuthCompletion,
   completeLinuxDoOAuthRegistration,
   completeOIDCOAuthRegistration,
+  completeFeishuOAuthRegistration,
   completeWeChatOAuthRegistration
 }
 

@@ -88,8 +88,12 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/auth/feishu/callback',
     name: 'auth-feishu-callback',
-    // [bmai-fork] feishu
-    component: () => import('@/views/auth/LinuxDoCallbackView.vue'),
+    component: () => import('@/views/auth/FeishuCallbackView.vue'),
+    meta: {
+      requiresAuth: false,
+      title: 'Feishu OAuth Callback',
+      titleKey: 'auth.oidcCallbackPageTitle'
+    }
   },
   {
     path: '/auth/wechat/callback',
