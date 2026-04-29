@@ -1546,6 +1546,27 @@ func setDefaults() {
 	viper.SetDefault("oidc_connect.userinfo_id_path", "")
 	viper.SetDefault("oidc_connect.userinfo_username_path", "")
 
+	// [bmai-fork] Feishu OAuth 登录
+	viper.SetDefault("feishu_connect.enabled", false)
+	viper.SetDefault("feishu_connect.client_id", "")
+	viper.SetDefault("feishu_connect.client_secret", "")
+	viper.SetDefault("feishu_connect.authorize_url", "https://passport.feishu.cn/suite/passport/oauth/authorize")
+	viper.SetDefault("feishu_connect.token_url", "https://passport.feishu.cn/suite/passport/oauth/token")
+	viper.SetDefault("feishu_connect.userinfo_url", "https://passport.feishu.cn/suite/passport/oauth/userinfo")
+	viper.SetDefault("feishu_connect.scopes", "openid offline_access contact:user.email:readonly contact:user.base:readonly")
+	viper.SetDefault("feishu_connect.redirect_url", "")
+	viper.SetDefault("feishu_connect.frontend_redirect_url", "/auth/feishu/callback")
+	viper.SetDefault("feishu_connect.token_auth_method", "client_secret_post")
+	viper.SetDefault("feishu_connect.use_pkce", false)
+	viper.SetDefault("feishu_connect.allowed_tenant_keys", []string{})
+	viper.SetDefault("feishu_connect.require_enterprise_email", false)
+	viper.SetDefault("feishu_connect.userinfo_email_path", "")
+	viper.SetDefault("feishu_connect.userinfo_id_path", "")
+	viper.SetDefault("feishu_connect.userinfo_username_path", "")
+	viper.SetDefault("oidc_connect.userinfo_email_path", "")
+	viper.SetDefault("oidc_connect.userinfo_id_path", "")
+	viper.SetDefault("oidc_connect.userinfo_username_path", "")
+
 	// Database
 	viper.SetDefault("database.host", "localhost")
 	viper.SetDefault("database.port", 5432)
