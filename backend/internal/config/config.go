@@ -1565,9 +1565,6 @@ func setDefaults() {
 	viper.SetDefault("feishu_connect.userinfo_email_path", "")
 	viper.SetDefault("feishu_connect.userinfo_id_path", "")
 	viper.SetDefault("feishu_connect.userinfo_username_path", "")
-	viper.SetDefault("oidc_connect.userinfo_email_path", "")
-	viper.SetDefault("oidc_connect.userinfo_id_path", "")
-	viper.SetDefault("oidc_connect.userinfo_username_path", "")
 
 	// Database
 	viper.SetDefault("database.host", "localhost")
@@ -2137,6 +2134,23 @@ func (c *Config) Validate() error {
 		warnIfInsecureURL("oidc_connect.jwks_url", c.OIDC.JWKSURL)
 		warnIfInsecureURL("oidc_connect.redirect_url", c.OIDC.RedirectURL)
 		warnIfInsecureURL("oidc_connect.frontend_redirect_url", c.OIDC.FrontendRedirectURL)
+	}
+	// [bmai-fork] feishu: validate required fields when enabled
+	if c.Feishu.Enabled {
+		if strings.TrimSpace(c.Feishu.ClientID) == "" {
+			return fmt.Errorf("feishu_connect.client_id is required when feishu_connect.enabled=true")
+		}
+		if strings.TrimSpace(c.Feishu.RedirectURL) == "" {
+			return fmt.Errorf("feishu_connect.redirect_url is required when feishu_connect.enabled=true")
+		}
+		if strings.TrimSpace(c.Feishu.FrontendRedirectURL) == "" {
+			return fmt.Errorf("feishu_connect.frontend_redirect_url is required when feishu_connect.enabled=true")
+		}
+		method := strings.ToLower(strings.TrimSpace(c.Feishu.TokenAuthMethod))
+		if (method == "" || method == "client_secret_post" || method == "client_secret_basic") &&
+			strings.TrimSpace(c.Feishu.ClientSecret) == "" {
+			return fmt.Errorf("feishu_connect.client_secret is required when feishu_connect.enabled=true and token_auth_method is client_secret_post/client_secret_basic")
+		}
 	}
 	if c.Billing.CircuitBreaker.Enabled {
 		if c.Billing.CircuitBreaker.FailureThreshold <= 0 {
