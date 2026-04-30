@@ -258,6 +258,7 @@ type FeishuConnectConfig struct {
 
 	AllowedTenantKeys      []string `mapstructure:"allowed_tenant_keys"`
 	RequireEnterpriseEmail bool     `mapstructure:"require_enterprise_email"`
+	AutoBindOrCreate       bool     `mapstructure:"auto_bind_or_create"`
 
 	UserInfoEmailPath    string `mapstructure:"userinfo_email_path"`
 	UserInfoIDPath       string `mapstructure:"userinfo_id_path"`
@@ -1560,6 +1561,7 @@ func setDefaults() {
 	viper.SetDefault("feishu_connect.use_pkce", false)
 	viper.SetDefault("feishu_connect.allowed_tenant_keys", []string{})
 	viper.SetDefault("feishu_connect.require_enterprise_email", false)
+	viper.SetDefault("feishu_connect.auto_bind_or_create", false)
 	viper.SetDefault("feishu_connect.userinfo_email_path", "")
 	viper.SetDefault("feishu_connect.userinfo_id_path", "")
 	viper.SetDefault("feishu_connect.userinfo_username_path", "")

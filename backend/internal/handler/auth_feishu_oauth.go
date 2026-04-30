@@ -306,6 +306,13 @@ func (h *AuthHandler) FeishuOAuthCallback(c *gin.Context) {
 		return
 	}
 	if existingIdentityUser != nil {
+		if cfg.AutoBindOrCreate { // [bmai-fork] feishu
+			if err := h.completeFeishuAutoLogin(c, frontendCallback, redirectTo, existingIdentityUser.ID, identityKey, upstreamClaims); err != nil {
+				redirectOAuthError(c, frontendCallback, "session_error", infraerrors.Reason(err), infraerrors.Message(err))
+				return
+			}
+			return
+		}
 		if err := h.createOAuthPendingSession(c, oauthPendingSessionPayload{
 			Intent:                 oauthIntentLogin,
 			Identity:               identityKey,
@@ -328,6 +335,20 @@ func (h *AuthHandler) FeishuOAuthCallback(c *gin.Context) {
 	compatEmailUser, err := h.findFeishuCompatEmailUser(c.Request.Context(), compatEmail)
 	if err != nil {
 		redirectOAuthError(c, frontendCallback, "session_error", infraerrors.Reason(err), infraerrors.Message(err))
+		return
+	}
+	if cfg.AutoBindOrCreate { // [bmai-fork] feishu
+		if compatEmailUser != nil {
+			if err := h.completeFeishuAutoLogin(c, frontendCallback, redirectTo, compatEmailUser.ID, identityKey, upstreamClaims); err != nil {
+				redirectOAuthError(c, frontendCallback, "session_error", infraerrors.Reason(err), infraerrors.Message(err))
+				return
+			}
+			return
+		}
+		if err := h.completeFeishuAutoCreate(c, frontendCallback, redirectTo, resolvedEmail, strings.TrimSpace(userClaims.Username), identityKey, upstreamClaims); err != nil {
+			redirectOAuthError(c, frontendCallback, "session_error", infraerrors.Reason(err), infraerrors.Message(err))
+			return
+		}
 		return
 	}
 
@@ -434,6 +455,111 @@ func (h *AuthHandler) createFeishuOAuthChoicePendingSession(
 		UpstreamIdentityClaims: upstreamClaims,
 		CompletionResponse:     completionResponse,
 	})
+}
+
+func (h *AuthHandler) completeFeishuAutoLogin(
+	c *gin.Context,
+	frontendCallback string,
+	redirectTo string,
+	userID int64,
+	identity service.PendingAuthIdentityKey,
+	upstreamClaims map[string]any,
+) error {
+	if err := h.ensureFeishuRuntimeIdentityBinding(c.Request.Context(), userID, identity, upstreamClaims); err != nil {
+		return err
+	}
+	if h.userService == nil || h.authService == nil {
+		return infraerrors.ServiceUnavailable("AUTH_NOT_READY", "authentication service is not ready")
+	}
+	user, err := h.userService.GetByID(c.Request.Context(), userID)
+	if err != nil {
+		return err
+	}
+	if user == nil || !user.IsActive() {
+		return infraerrors.Forbidden("ACCOUNT_DISABLED", "account is disabled")
+	}
+	tokenPair, err := h.authService.GenerateTokenPair(c.Request.Context(), user, "")
+	if err != nil {
+		return infraerrors.InternalServer("TOKEN_GEN_FAILED", "failed to generate token pair").WithCause(err)
+	}
+	h.authService.RecordSuccessfulLogin(c.Request.Context(), user.ID)
+	feishuRedirectWithToken(c, frontendCallback, tokenPair, redirectTo)
+	return nil
+}
+
+func (h *AuthHandler) completeFeishuAutoCreate(
+	c *gin.Context,
+	frontendCallback string,
+	redirectTo string,
+	email string,
+	username string,
+	identity service.PendingAuthIdentityKey,
+	upstreamClaims map[string]any,
+) error {
+	if err := h.ensureBackendModeAllowsNewUserLogin(c.Request.Context()); err != nil {
+		return err
+	}
+	if h.authService == nil {
+		return infraerrors.ServiceUnavailable("AUTH_NOT_READY", "authentication service is not ready")
+	}
+	tokenPair, user, err := h.authService.LoginOrRegisterOAuthWithTokenPair(c.Request.Context(), email, username, "", "")
+	if err != nil {
+		return err
+	}
+	if user == nil {
+		return infraerrors.InternalServer("USER_CREATE_FAILED", "failed to resolve oauth user")
+	}
+	if err := h.ensureFeishuRuntimeIdentityBinding(c.Request.Context(), user.ID, identity, upstreamClaims); err != nil {
+		return err
+	}
+	h.authService.RecordSuccessfulLogin(c.Request.Context(), user.ID)
+	feishuRedirectWithToken(c, frontendCallback, tokenPair, redirectTo)
+	return nil
+}
+
+func (h *AuthHandler) ensureFeishuRuntimeIdentityBinding(
+	ctx context.Context,
+	userID int64,
+	identity service.PendingAuthIdentityKey,
+	upstreamClaims map[string]any,
+) error {
+	client := h.entClient()
+	if client == nil {
+		return infraerrors.ServiceUnavailable("PENDING_AUTH_NOT_READY", "pending auth service is not ready")
+	}
+	tx, err := client.Tx(ctx)
+	if err != nil {
+		return infraerrors.InternalServer("AUTH_IDENTITY_BIND_FAILED", "failed to begin feishu identity bind transaction").WithCause(err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	_, err = ensurePendingOAuthIdentityForUser(dbent.NewTxContext(ctx, tx), tx, &dbent.PendingAuthSession{
+		ProviderType:           strings.TrimSpace(identity.ProviderType),
+		ProviderKey:            strings.TrimSpace(identity.ProviderKey),
+		ProviderSubject:        strings.TrimSpace(identity.ProviderSubject),
+		UpstreamIdentityClaims: cloneOAuthMetadata(upstreamClaims),
+	}, userID)
+	if err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func feishuRedirectWithToken(c *gin.Context, frontendCallback string, tokenPair *service.TokenPair, redirectTo string) {
+	fragment := url.Values{}
+	if tokenPair != nil {
+		fragment.Set("access_token", strings.TrimSpace(tokenPair.AccessToken))
+		if strings.TrimSpace(tokenPair.RefreshToken) != "" {
+			fragment.Set("refresh_token", strings.TrimSpace(tokenPair.RefreshToken))
+		}
+		if tokenPair.ExpiresIn > 0 {
+			fragment.Set("expires_in", strconv.Itoa(tokenPair.ExpiresIn))
+		}
+		fragment.Set("token_type", "Bearer")
+	}
+	if sanitized := sanitizeFrontendRedirectPath(strings.TrimSpace(redirectTo)); sanitized != "" {
+		fragment.Set("redirect", sanitized)
+	}
+	redirectWithFragment(c, frontendCallback, fragment)
 }
 
 type completeFeishuOAuthRequest struct {
