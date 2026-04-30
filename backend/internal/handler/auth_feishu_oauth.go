@@ -239,6 +239,8 @@ func (h *AuthHandler) FeishuOAuthCallback(c *gin.Context) {
 		redirectOAuthError(c, frontendCallback, "userinfo_failed", "failed to fetch user info", "")
 		return
 	}
+	log.Printf("[Feishu OAuth] userinfo: subject=%s email=%q enterprise_email=%q tenant_key=%s display_name=%q",
+		userClaims.Subject, userClaims.Email, userClaims.EnterpriseEmail, userClaims.TenantKey, userClaims.DisplayName)
 
 	if !service.IsFeishuTenantAllowed(cfg.AllowedTenantKeys, userClaims.TenantKey) {
 		redirectOAuthError(c, frontendCallback, "tenant_not_allowed", "tenant is not allowed", "")

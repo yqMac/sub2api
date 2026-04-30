@@ -1291,7 +1291,7 @@ func load(allowMissingJWTSecret bool) (*Config, error) {
 		cfg.Feishu.UserInfoURL = "https://passport.feishu.cn/suite/passport/oauth/userinfo"
 	}
 	if strings.TrimSpace(cfg.Feishu.Scopes) == "" {
-		cfg.Feishu.Scopes = "openid offline_access contact:user.email:readonly contact:user.base:readonly"
+		cfg.Feishu.Scopes = "openid profile email"
 	}
 	if strings.TrimSpace(cfg.Feishu.TokenAuthMethod) == "" {
 		cfg.Feishu.TokenAuthMethod = "client_secret_post"
@@ -1554,7 +1554,7 @@ func setDefaults() {
 	viper.SetDefault("feishu_connect.authorize_url", "https://passport.feishu.cn/suite/passport/oauth/authorize")
 	viper.SetDefault("feishu_connect.token_url", "https://passport.feishu.cn/suite/passport/oauth/token")
 	viper.SetDefault("feishu_connect.userinfo_url", "https://passport.feishu.cn/suite/passport/oauth/userinfo")
-	viper.SetDefault("feishu_connect.scopes", "openid offline_access contact:user.email:readonly contact:user.base:readonly")
+	viper.SetDefault("feishu_connect.scopes", "openid profile email")
 	viper.SetDefault("feishu_connect.redirect_url", "")
 	viper.SetDefault("feishu_connect.frontend_redirect_url", "/auth/feishu/callback")
 	viper.SetDefault("feishu_connect.token_auth_method", "client_secret_post")
@@ -2052,7 +2052,7 @@ func (c *Config) Validate() error {
 		c.Feishu.UserInfoURL = "https://passport.feishu.cn/suite/passport/oauth/userinfo"
 	}
 	if strings.TrimSpace(c.Feishu.Scopes) == "" {
-		c.Feishu.Scopes = "openid offline_access contact:user.email:readonly contact:user.base:readonly"
+		c.Feishu.Scopes = "openid profile email"
 	}
 	if strings.TrimSpace(c.Feishu.TokenAuthMethod) == "" {
 		c.Feishu.TokenAuthMethod = "client_secret_post"
