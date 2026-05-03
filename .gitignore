@@ -53,7 +53,8 @@ pnpm-debug.log*
 .env.*.local
 *.env
 !.env.example
-docker-compose.override.yml
+# [bmai-fork] root-level override tracked in fork
+# docker-compose.override.yml
 
 # ===================
 # IDE / 编辑器
@@ -122,15 +123,17 @@ scripts
 .code-review-state
 #openspec/
 code-reviews/
-#AGENTS.md
+AGENTS.md
 backend/cmd/server/server
-deploy/docker-compose.override.yml
+# [bmai-fork] override is tracked in our fork for production config
+# deploy/docker-compose.override.yml
 .gocache/
 vite.config.js
 docs/*
 !docs/PAYMENT.md
 !docs/PAYMENT_CN.md
 !docs/ADMIN_PAYMENT_INTEGRATION_API.md
+!docs/FORK-MANAGEMENT-STANDARD.md
 .serena/
 .codex/
 frontend/coverage/
