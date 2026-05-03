@@ -220,6 +220,8 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 	} else if !canWait {
 		reqLog.Info("gateway.user_wait_queue_full", zap.Int("max_wait", maxWait))
 		h.errorResponse(c, http.StatusTooManyRequests, "rate_limit_error", "Too many pending requests, please retry later")
+		// [bmai-fork] audit rate-limited request
+		h.submitAuditError(apiKey, body, GetInboundEndpoint(c), reqModel, http.StatusTooManyRequests, "rate_limit_user_queue")
 		return
 	}
 	if err == nil && canWait {
@@ -594,6 +596,8 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 					} else {
 						h.handleFailoverExhaustedSimple(c, 502, streamStarted)
 					}
+					// [bmai-fork] audit upstream failure
+					h.submitAuditError(apiKey, body, GetInboundEndpoint(c), reqModel, http.StatusBadGateway, "failover_exhausted")
 					return
 				}
 			}

@@ -51,6 +51,8 @@ type auditSubmitInput struct {
 	HasThinking      bool
 	HasReasoning     bool
 	BillingMode      string
+	Intercepted      bool
+	InterceptReason  string
 }
 
 // submitAuditLog builds and submits an AuditLog. No-op when audit is disabled.
@@ -98,9 +100,36 @@ func (h *GatewayHandler) submitAuditLog(in auditSubmitInput) {
 		InputTokens:       in.InputTokens,
 		OutputTokens:      in.OutputTokens,
 		StatusCode:        in.StatusCode,
+		Intercepted:       in.Intercepted,
+		InterceptReason:   in.InterceptReason,
 		CreatedAt:         time.Now(),
 	}
 	h.auditLogService.Submit(log)
+}
+
+// [bmai-fork] submitAuditError records a failed/blocked request in audit_logs.
+// Called from error paths (rate limit, no account, upstream error).
+func (h *GatewayHandler) submitAuditError(
+	apiKey *service.APIKey,
+	body []byte,
+	endpoint string,
+	model string,
+	statusCode int,
+	errType string,
+) {
+	if h.auditLogService == nil || !h.auditLogService.Enabled() || apiKey == nil {
+		return
+	}
+	h.submitAuditLog(auditSubmitInput{
+		UserID:          apiKey.UserID,
+		APIKeyID:        apiKey.ID,
+		RequestBody:     body,
+		Endpoint:        endpoint,
+		Model:           model,
+		StatusCode:      statusCode,
+		Intercepted:     true,
+		InterceptReason: errType,
+	})
 }
 
 func truncatePreview(b []byte, max int) (string, bool) {

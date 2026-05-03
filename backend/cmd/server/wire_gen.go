@@ -235,7 +235,7 @@ func initializeApplication(buildInfo handler.BuildInfo) (*Application, error) {
 	// [bmai-fork] audit + organization
 	auditLogRepository := repository.NewAuditLogRepository(db)
 	organizationRepository := repository.NewOrganizationRepository(db)
-	auditLogService := service.NewAuditLogService(auditLogRepository, organizationRepository, configConfig)
+	auditLogService := service.NewAuditLogService(auditLogRepository, organizationRepository, settingRepository, configConfig)
 	auditLogService.EnsurePartitions(context.Background()) // [bmai-fork] auto-create monthly partitions
 	auditHandler := admin.NewAuditHandler(auditLogService)
 	auditSettingsHandler := admin.NewAuditSettingsHandler(auditLogService)

@@ -3,8 +3,10 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -12,69 +14,115 @@ import (
 	"github.com/Wei-Shaw/sub2api/internal/domain"
 )
 
+const auditSettingsKey = "audit_config"
+
 type AuditLogService struct {
-	repo    AuditLogRepository
-	orgRepo OrganizationRepository // [bmai-fork] for user org/dept lookup
-	cfg     atomic.Value           // *config.AuditConfig
-	log     *slog.Logger
+	repo        AuditLogRepository
+	settingRepo SettingRepository          // [bmai-fork] for config persistence
+	orgRepo     OrganizationRepository     // [bmai-fork] for user org/dept lookup
+	cfg         atomic.Value               // *config.AuditConfig
+	log         *slog.Logger
+	submitCh    chan *domain.AuditLog       // bounded worker channel
+	wg          sync.WaitGroup
 }
 
-func NewAuditLogService(repo AuditLogRepository, orgRepo OrganizationRepository, cfg *config.Config) *AuditLogService {
+func NewAuditLogService(repo AuditLogRepository, orgRepo OrganizationRepository, settingRepo SettingRepository, cfg *config.Config) *AuditLogService {
 	s := &AuditLogService{
-		repo:    repo,
-		orgRepo: orgRepo,
-		log:     slog.Default().With("component", "audit"),
+		repo:        repo,
+		orgRepo:     orgRepo,
+		settingRepo: settingRepo,
+		log:         slog.Default().With("component", "audit"),
+		submitCh:    make(chan *domain.AuditLog, 256),
 	}
+
+	// Load config: DB settings override env/file config
 	auditCfg := cfg.Audit
-	if auditCfg.MaxRequestBytes == 0 {
-		auditCfg.MaxRequestBytes = 32768
-	}
-	if auditCfg.MaxResponseBytes == 0 {
-		auditCfg.MaxResponseBytes = 32768
-	}
-	if auditCfg.RetentionDays == 0 {
-		auditCfg.RetentionDays = 30
+	s.applyDefaults(&auditCfg)
+	if settingRepo != nil {
+		if dbCfg, err := s.loadConfigFromDB(context.Background()); err == nil && dbCfg != nil {
+			auditCfg = *dbCfg
+			s.applyDefaults(&auditCfg)
+		}
 	}
 	s.cfg.Store(&auditCfg)
+
+	// Start worker pool (4 workers, bounded channel)
+	for i := 0; i < 4; i++ {
+		s.wg.Add(1)
+		go s.worker()
+	}
+
 	return s
+}
+
+func (s *AuditLogService) applyDefaults(cfg *config.AuditConfig) {
+	if cfg.MaxRequestBytes == 0 {
+		cfg.MaxRequestBytes = 32768
+	}
+	if cfg.MaxResponseBytes == 0 {
+		cfg.MaxResponseBytes = 32768
+	}
+	if cfg.RetentionDays == 0 {
+		cfg.RetentionDays = 30
+	}
+}
+
+func (s *AuditLogService) loadConfigFromDB(ctx context.Context) (*config.AuditConfig, error) {
+	val, err := s.settingRepo.GetValue(ctx, auditSettingsKey)
+	if err != nil || val == "" {
+		return nil, err
+	}
+	var cfg config.AuditConfig
+	if err := json.Unmarshal([]byte(val), &cfg); err != nil {
+		return nil, err
+	}
+	return &cfg, nil
+}
+
+func (s *AuditLogService) saveConfigToDB(ctx context.Context, cfg *config.AuditConfig) error {
+	if s.settingRepo == nil {
+		return nil
+	}
+	data, err := json.Marshal(cfg)
+	if err != nil {
+		return err
+	}
+	return s.settingRepo.Set(ctx, auditSettingsKey, string(data))
 }
 
 func (s *AuditLogService) UpdateConfig(cfg *config.AuditConfig) {
 	s.cfg.Store(cfg)
+	if err := s.saveConfigToDB(context.Background(), cfg); err != nil {
+		s.log.Warn("failed to persist audit config", "err", err)
+	}
 }
 
 func (s *AuditLogService) Config() *config.AuditConfig {
 	return s.cfg.Load().(*config.AuditConfig)
 }
 
-func (s *AuditLogService) Enabled() bool {
-	return s.Config().Enabled
-}
+func (s *AuditLogService) Enabled() bool          { return s.Config().Enabled }
+func (s *AuditLogService) MaxRequestBytes() int    { return s.Config().MaxRequestBytes }
+func (s *AuditLogService) MaxResponseBytes() int   { return s.Config().MaxResponseBytes }
+func (s *AuditLogService) CaptureUpstream() bool   { return s.Config().CaptureUpstream }
+func (s *AuditLogService) ClassifyResponse() bool  { return s.Config().ClassifyResponse }
 
-func (s *AuditLogService) MaxRequestBytes() int {
-	return s.Config().MaxRequestBytes
-}
-
-func (s *AuditLogService) MaxResponseBytes() int {
-	return s.Config().MaxResponseBytes
-}
-
-func (s *AuditLogService) CaptureUpstream() bool {
-	return s.Config().CaptureUpstream
-}
-
-func (s *AuditLogService) ClassifyResponse() bool {
-	return s.Config().ClassifyResponse
-}
-
+// Submit enqueues an audit log for async writing. Non-blocking; drops if channel full.
 func (s *AuditLogService) Submit(log *domain.AuditLog) {
 	if !s.Enabled() {
 		return
 	}
-	go func() {
+	select {
+	case s.submitCh <- log:
+	default:
+		s.log.Warn("audit submit channel full, dropping", "request_id", log.RequestID)
+	}
+}
+
+func (s *AuditLogService) worker() {
+	defer s.wg.Done()
+	for log := range s.submitCh {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		// [bmai-fork] enrich with org info if not already populated by caller
 		if log.OrganizationID == nil && log.DepartmentID == nil && s.orgRepo != nil && log.UserID > 0 {
 			if orgID, deptID, deptPath, err := s.orgRepo.GetUserOrgInfo(ctx, log.UserID); err == nil {
 				log.OrganizationID = orgID
@@ -87,7 +135,14 @@ func (s *AuditLogService) Submit(log *domain.AuditLog) {
 		if err := s.repo.Insert(ctx, log); err != nil {
 			s.log.Error("audit log insert failed", "err", err, "request_id", log.RequestID)
 		}
-	}()
+		cancel()
+	}
+}
+
+// Shutdown drains the worker pool. Call on graceful shutdown.
+func (s *AuditLogService) Shutdown() {
+	close(s.submitCh)
+	s.wg.Wait()
 }
 
 func (s *AuditLogService) Get(ctx context.Context, id int64) (*domain.AuditLog, error) {
@@ -106,7 +161,6 @@ func (s *AuditLogService) StorageInfo(ctx context.Context) (*AuditStorageInfo, e
 	return s.repo.StorageInfo(ctx)
 }
 
-// [bmai-fork] EnsurePartitions creates the current and next month partitions if they don't exist.
 func (s *AuditLogService) EnsurePartitions(ctx context.Context) {
 	now := time.Now()
 	months := []time.Time{

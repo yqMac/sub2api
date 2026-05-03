@@ -3385,6 +3385,11 @@ func (s *OpenAIGatewayService) handleStreamingResponsePassthrough(
 				logger.LegacyPrintf("service.openai_gateway", "[OpenAI passthrough] Client disconnected during streaming, continue draining upstream for usage: account=%d", account.ID)
 				return false
 			}
+			// [bmai-fork] tee pending line to audit capture buffer
+			if capBuf := AuditCaptureBufferFromContext(ctx); capBuf != nil {
+				capBuf.Write([]byte(pending))
+				capBuf.Write([]byte{'\n'})
+			}
 		}
 		pendingLines = pendingLines[:0]
 		return true
@@ -3455,6 +3460,11 @@ func (s *OpenAIGatewayService) handleStreamingResponsePassthrough(
 			} else {
 				clientOutputStarted = true
 				flusher.Flush()
+			}
+			// [bmai-fork] tee to audit capture buffer
+			if capBuf := AuditCaptureBufferFromContext(ctx); capBuf != nil {
+				capBuf.Write([]byte(line))
+				capBuf.Write([]byte{'\n'})
 			}
 		}
 	}
