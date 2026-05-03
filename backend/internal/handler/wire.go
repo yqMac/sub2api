@@ -38,6 +38,9 @@ func ProvideAdminHandlers(
 	channelMonitorTemplateHandler *admin.ChannelMonitorRequestTemplateHandler,
 	paymentHandler *admin.PaymentHandler,
 	affiliateHandler *admin.AffiliateHandler,
+	auditHandler *admin.AuditHandler, // [bmai-fork]
+	auditSettingsHandler *admin.AuditSettingsHandler, // [bmai-fork]
+	organizationHandler *admin.OrganizationHandler, // [bmai-fork]
 ) *AdminHandlers {
 	return &AdminHandlers{
 		Dashboard:              dashboardHandler,
@@ -69,6 +72,9 @@ func ProvideAdminHandlers(
 		ChannelMonitorTemplate: channelMonitorTemplateHandler,
 		Payment:                paymentHandler,
 		Affiliate:              affiliateHandler,
+		Audit:                  auditHandler,         // [bmai-fork]
+		AuditSettings:          auditSettingsHandler, // [bmai-fork]
+		Organization:           organizationHandler,  // [bmai-fork]
 	}
 }
 
@@ -172,6 +178,9 @@ var ProviderSet = wire.NewSet(
 	admin.NewChannelMonitorRequestTemplateHandler,
 	admin.NewPaymentHandler,
 	admin.NewAffiliateHandler,
+	admin.NewAuditHandler,         // [bmai-fork]
+	admin.NewAuditSettingsHandler, // [bmai-fork]
+	admin.NewOrganizationHandler,  // [bmai-fork]
 
 	// AdminHandlers and Handlers constructors
 	ProvideAdminHandlers,

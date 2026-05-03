@@ -35,6 +35,9 @@ type AdminHandlers struct {
 	ChannelMonitorTemplate *admin.ChannelMonitorRequestTemplateHandler
 	Payment                *admin.PaymentHandler
 	Affiliate              *admin.AffiliateHandler
+	Audit                  *admin.AuditHandler         // [bmai-fork]
+	AuditSettings          *admin.AuditSettingsHandler // [bmai-fork]
+	Organization           *admin.OrganizationHandler  // [bmai-fork]
 }
 
 // Handlers contains all HTTP handlers
