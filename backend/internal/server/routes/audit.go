@@ -40,6 +40,6 @@ func registerOrganizationRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		orgs.DELETE("/departments/:id", h.Admin.Organization.DeleteDepartment)
 		orgs.GET("/departments/:id/users", h.Admin.Organization.DepartmentUsers)
 		orgs.POST("/departments/:id/users", h.Admin.Organization.AssignUser)
-		orgs.DELETE("/departments/:deptId/users/:userId", h.Admin.Organization.RemoveUser)
+		orgs.DELETE("/departments/:id/users/:userId", h.Admin.Organization.RemoveUser)
 	}
 }

@@ -185,9 +185,9 @@ func (h *OrganizationHandler) AssignUser(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"code": 0, "msg": "ok"})
 }
 
-// DELETE /api/admin/organizations/departments/:deptId/users/:userId
+// DELETE /api/admin/organizations/departments/:id/users/:userId
 func (h *OrganizationHandler) RemoveUser(c *gin.Context) {
-	deptID := mustInt64(c.Param("deptId"))
+	deptID := mustInt64(c.Param("id"))
 	userID := mustInt64(c.Param("userId"))
 	if err := h.orgService.RemoveUserFromDepartment(c.Request.Context(), userID, deptID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"code": 1, "msg": err.Error()})
