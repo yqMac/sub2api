@@ -134,6 +134,8 @@ docs/*
 !docs/PAYMENT_CN.md
 !docs/ADMIN_PAYMENT_INTEGRATION_API.md
 !docs/FORK-MANAGEMENT-STANDARD.md
+!docs/audit/
+!docs/audit/**
 .serena/
 .codex/
 frontend/coverage/
