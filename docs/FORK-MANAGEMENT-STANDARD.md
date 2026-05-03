@@ -133,6 +133,83 @@ PREVIEW_VERSION=0.1.122-bmai.1 docker compose --profile preview up -d sub2api-te
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
 ```
 
+## 日常操作速查
+
+### 新功能开发
+
+```bash
+git checkout develop
+git pull origin develop
+git checkout -b feat/my-feature
+
+# ... 开发、提交（commit message 末尾加 [bmai-fork]）
+# ... 内联修改加 [bmai-fork] 注释
+
+git checkout develop
+git merge feat/my-feature --no-ff
+git branch -d feat/my-feature
+git push origin develop
+```
+
+### 上游升级（upstream 发布新版本时）
+
+```bash
+# 1. 同步 main（fast-forward，无冲突）
+git fetch upstream
+git checkout main
+git merge upstream/main
+git push origin main
+
+# 2. 合并到 develop（冲突在这里解决）
+git checkout develop
+git merge main
+
+# 3. 验证二开标记完整性
+grep -R "\[bmai-fork\]" -n backend frontend
+
+# 4. 更新文档
+#    - UPSTREAM.md: 更新基线版本
+#    - FORK-CHANGELOG.md: 记录本次升级
+
+# 5. 提交、推送
+git add -A && git commit -m "chore: merge upstream vX.Y.Z into develop [bmai-fork]"
+git push origin develop
+```
+
+### 发版
+
+```bash
+cd deploy
+
+# 构建镜像
+sudo docker build -t sub2api-bmai:0.1.121-bmai.5 -f deploy/Dockerfile .
+
+# 启动 preview 验证
+PREVIEW_VERSION=0.1.121-bmai.5 docker compose --profile preview up -d sub2api-test
+# 浏览器访问 https://aiapi.yqmac.com/__preview_enable 验证
+
+# 切换生产
+VERSION=0.1.121-bmai.5 docker compose up -d sub2api
+# 浏览器访问 https://aiapi.yqmac.com/__preview_disable
+
+# 验证数据
+sudo docker exec sub2api-postgres psql -U sub2api -d sub2api -Atc "select count(*) from users;"
+sudo docker exec sub2api-postgres psql -U sub2api -d sub2api -Atc "select count(*) from accounts;"
+sudo docker exec sub2api-postgres psql -U sub2api -d sub2api -Atc "select count(*) from api_keys;"
+```
+
+### 紧急修复
+
+```bash
+git checkout develop
+git checkout -b hotfix/fix-description
+# ... 修复
+git checkout develop
+git merge hotfix/fix-description --no-ff
+git branch -d hotfix/fix-description
+# 走发版流程
+```
+
 ## 分支清理规则
 
 - 已合并到 develop 的 feat/fix 分支：合并后立即删除
