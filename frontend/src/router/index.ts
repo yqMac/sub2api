@@ -455,6 +455,32 @@ const routes: RouteRecordRaw[] = [
       descriptionKey: 'admin.accounts.description'
     }
   },
+  // [bmai-fork] audit logs
+  {
+    path: '/admin/audit',
+    name: 'AdminAudit',
+    component: () => import('@/views/admin/AuditView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'Audit Logs',
+      titleKey: 'admin.audit.title',
+      descriptionKey: 'admin.audit.description'
+    }
+  },
+  // [bmai-fork] organizations
+  {
+    path: '/admin/organizations',
+    name: 'AdminOrganizations',
+    component: () => import('@/views/admin/OrganizationsView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: true,
+      title: 'Organizations',
+      titleKey: 'admin.organizations.title',
+      descriptionKey: 'admin.organizations.description'
+    }
+  },
   {
     path: '/admin/announcements',
     name: 'AdminAnnouncements',
