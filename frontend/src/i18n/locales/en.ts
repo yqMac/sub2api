@@ -357,6 +357,8 @@ export default {
     proxies: 'Proxies',
     redeemCodes: 'Redeem Codes',
     ops: 'Ops',
+    audit: 'Audit Logs',
+    organizations: 'Organizations',
     promoCodes: 'Promo Codes',
     settings: 'Settings',
     myAccount: 'My Account',

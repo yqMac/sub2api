@@ -197,6 +197,25 @@ func (r *organizationRepository) UpdateUserDenormalizedOrg(ctx context.Context, 
 	return err
 }
 
+// [bmai-fork] GetUserOrgInfo loads the user's organization_id, primary_department_id, and full_path.
+// Used by audit log writer to denormalize org dimensions onto each row.
+// Returns (nil, nil, "", nil) when user has no org assignment.
+func (r *organizationRepository) GetUserOrgInfo(ctx context.Context, userID int64) (*int64, *int64, string, error) {
+	const q = `
+		SELECT u.organization_id, u.primary_department_id, COALESCE(d.full_path, '')
+		FROM users u
+		LEFT JOIN departments d ON d.id = u.primary_department_id AND d.deleted_at IS NULL
+		WHERE u.id = $1
+	`
+	var orgID, deptID *int64
+	var deptPath string
+	err := r.db.QueryRowContext(ctx, q, userID).Scan(&orgID, &deptID, &deptPath)
+	if err == sql.ErrNoRows {
+		return nil, nil, "", nil
+	}
+	return orgID, deptID, deptPath, err
+}
+
 // suppress unused import warnings
 var (
 	_ = fmt.Sprintf

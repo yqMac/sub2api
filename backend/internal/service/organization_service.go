@@ -92,3 +92,8 @@ func (s *OrganizationService) GetUserDepartments(ctx context.Context, userID int
 func (s *OrganizationService) GetDepartmentUsers(ctx context.Context, deptID int64, page, pageSize int) ([]*domain.UserDepartment, int64, error) {
 	return s.repo.GetDepartmentUsers(ctx, deptID, page, pageSize)
 }
+
+// [bmai-fork] GetUserOrgInfo: helper used by audit-write path
+func (s *OrganizationService) GetUserOrgInfo(ctx context.Context, userID int64) (*int64, *int64, string, error) {
+	return s.repo.GetUserOrgInfo(ctx, userID)
+}

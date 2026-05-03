@@ -14,6 +14,7 @@ type AuditLogRepository interface {
 	List(ctx context.Context, filter AuditLogFilter) ([]*domain.AuditLog, int64, error)
 	DeleteBefore(ctx context.Context, before time.Time) (int64, error)
 	StorageInfo(ctx context.Context) (*AuditStorageInfo, error)
+	ExecDDL(ctx context.Context, ddl string) error
 }
 
 type AuditLogFilter struct {

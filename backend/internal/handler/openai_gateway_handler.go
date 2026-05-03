@@ -35,6 +35,7 @@ type OpenAIGatewayHandler struct {
 	concurrencyHelper       *ConcurrencyHelper
 	maxAccountSwitches      int
 	cfg                     *config.Config
+	auditLogService         *service.AuditLogService // [bmai-fork]
 }
 
 func resolveOpenAIForwardDefaultMappedModel(apiKey *service.APIKey, fallbackModel string) string {
@@ -63,6 +64,7 @@ func NewOpenAIGatewayHandler(
 	usageRecordWorkerPool *service.UsageRecordWorkerPool,
 	errorPassthroughService *service.ErrorPassthroughService,
 	cfg *config.Config,
+	auditLogService *service.AuditLogService, // [bmai-fork]
 ) *OpenAIGatewayHandler {
 	pingInterval := time.Duration(0)
 	maxAccountSwitches := 3
@@ -81,6 +83,7 @@ func NewOpenAIGatewayHandler(
 		concurrencyHelper:       NewConcurrencyHelper(concurrencyService, SSEPingFormatComment, pingInterval),
 		maxAccountSwitches:      maxAccountSwitches,
 		cfg:                     cfg,
+		auditLogService:         auditLogService, // [bmai-fork]
 	}
 }
 
@@ -128,6 +131,13 @@ func (h *OpenAIGatewayHandler) Responses(c *gin.Context) {
 		}
 		h.errorResponse(c, http.StatusBadRequest, "invalid_request_error", "Failed to read request body")
 		return
+	}
+
+	// [bmai-fork] acquire audit capture buffer; nil when audit disabled
+	auditBuf, auditCtx := h.auditAcquireBuffer(c.Request.Context())
+	if auditBuf != nil {
+		c.Request = c.Request.WithContext(auditCtx)
+		defer h.auditReleaseBuffer(auditBuf)
 	}
 
 	if len(body) == 0 {
@@ -420,6 +430,8 @@ func (h *OpenAIGatewayHandler) Responses(c *gin.Context) {
 				).Error("openai.record_usage_failed", zap.Error(err))
 			}
 		})
+		// [bmai-fork] submit audit log (no-op when disabled)
+		h.submitAuditFromOpenAIContext(apiKey, account, result, auditBuf, body, GetInboundEndpoint(c), result.ReasoningEffort != nil)
 		reqLog.Debug("openai.request_completed",
 			zap.Int64("account_id", account.ID),
 			zap.Int("switch_count", switchCount),
@@ -554,6 +566,13 @@ func (h *OpenAIGatewayHandler) Messages(c *gin.Context) {
 		}
 		h.anthropicErrorResponse(c, http.StatusBadRequest, "invalid_request_error", "Failed to read request body")
 		return
+	}
+
+	// [bmai-fork] acquire audit capture buffer; nil when audit disabled
+	auditBuf, auditCtx := h.auditAcquireBuffer(c.Request.Context())
+	if auditBuf != nil {
+		c.Request = c.Request.WithContext(auditCtx)
+		defer h.auditReleaseBuffer(auditBuf)
 	}
 	if len(body) == 0 {
 		h.anthropicErrorResponse(c, http.StatusBadRequest, "invalid_request_error", "Request body is empty")
@@ -793,6 +812,8 @@ func (h *OpenAIGatewayHandler) Messages(c *gin.Context) {
 				).Error("openai_messages.record_usage_failed", zap.Error(err))
 			}
 		})
+		// [bmai-fork] submit audit log (no-op when disabled)
+		h.submitAuditFromOpenAIContext(apiKey, account, result, auditBuf, body, GetInboundEndpoint(c), result.ReasoningEffort != nil)
 		reqLog.Debug("openai_messages.request_completed",
 			zap.Int64("account_id", account.ID),
 			zap.Int("switch_count", switchCount),
@@ -1032,6 +1053,13 @@ func (h *OpenAIGatewayHandler) ResponsesWebSocket(c *gin.Context) {
 		return
 	}
 	setOpenAIClientTransportWS(c)
+
+	// [bmai-fork] acquire audit capture buffer for WS path
+	auditBuf, auditCtx := h.auditAcquireBuffer(c.Request.Context())
+	if auditBuf != nil {
+		c.Request = c.Request.WithContext(auditCtx)
+		defer h.auditReleaseBuffer(auditBuf)
+	}
 
 	apiKey, ok := middleware2.GetAPIKeyFromContext(c)
 	if !ok {
@@ -1295,6 +1323,8 @@ func (h *OpenAIGatewayHandler) ResponsesWebSocket(c *gin.Context) {
 					)
 				}
 			})
+			// [bmai-fork] submit audit log for websocket path
+			h.submitAuditFromOpenAIContext(apiKey, account, result, auditBuf, firstMessage, GetInboundEndpoint(c), result.ReasoningEffort != nil)
 		},
 	}
 

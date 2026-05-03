@@ -24,4 +24,5 @@ type OrganizationRepository interface {
 	GetUserDepartments(ctx context.Context, userID int64) ([]*domain.Department, error)
 	GetDepartmentUsers(ctx context.Context, deptID int64, page, pageSize int) ([]*domain.UserDepartment, int64, error)
 	UpdateUserDenormalizedOrg(ctx context.Context, userID int64, orgID *int64, primaryDeptID *int64) error
+	GetUserOrgInfo(ctx context.Context, userID int64) (orgID *int64, deptID *int64, deptPath string, err error)
 }

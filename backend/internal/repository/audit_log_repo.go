@@ -253,3 +253,9 @@ func nilIfEmpty(s string) any {
 }
 
 var _ = time.Now
+
+// [bmai-fork] ExecDDL runs arbitrary DDL (used for partition creation)
+func (r *auditLogRepository) ExecDDL(ctx context.Context, ddl string) error {
+	_, err := r.db.ExecContext(ctx, ddl)
+	return err
+}
