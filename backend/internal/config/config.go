@@ -90,6 +90,7 @@ type Config struct {
 	Gemini                  GeminiConfig                  `mapstructure:"gemini"`
 	Update                  UpdateConfig                  `mapstructure:"update"`
 	Idempotency             IdempotencyConfig             `mapstructure:"idempotency"`
+	Audit                   AuditConfig                   `mapstructure:"audit"` // [bmai-fork]
 }
 
 type LogConfig struct {
@@ -170,6 +171,16 @@ type IdempotencyConfig struct {
 	CleanupIntervalSeconds int `mapstructure:"cleanup_interval_seconds"`
 	// CleanupBatchSize 每次清理的最大记录数。
 	CleanupBatchSize int `mapstructure:"cleanup_batch_size"`
+}
+
+// [bmai-fork] audit configuration — runtime-overridable via settings table
+type AuditConfig struct {
+	Enabled          bool `mapstructure:"enabled"`
+	MaxRequestBytes  int  `mapstructure:"max_request_bytes"`
+	MaxResponseBytes int  `mapstructure:"max_response_bytes"`
+	CaptureUpstream  bool `mapstructure:"capture_upstream"`
+	RetentionDays    int  `mapstructure:"retention_days"`
+	ClassifyResponse bool `mapstructure:"classify_response"`
 }
 
 type LinuxDoConnectConfig struct {
