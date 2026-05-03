@@ -1,0 +1,71 @@
+# =============================================================================
+# Sub2API Docker Compose - Production Override
+# =============================================================================
+# This file is automatically loaded alongside docker-compose.yml by Docker
+# Compose. It adds production-specific configuration:
+#   - App container on port 8180
+#   - Preview container on port 8181 (profile-gated)
+#
+# Usage:
+#   # Normal production (only app + db + redis)
+#   VERSION=0.1.121-bmai.4 docker compose up -d sub2api
+#
+#   # Start preview container
+#   PREVIEW_VERSION=0.1.122-bmai.1 docker compose --profile preview up -d sub2api-test
+#
+#   # Stop preview
+#   docker compose --profile preview stop sub2api-test
+# =============================================================================
+
+services:
+  sub2api:
+    image: sub2api-bmai:${VERSION:-latest}
+    ports:
+      - "${BIND_HOST:-0.0.0.0}:8180:8080"
+
+  sub2api-test:
+    image: sub2api-bmai:${PREVIEW_VERSION:-latest}
+    container_name: sub2api-test
+    restart: unless-stopped
+    ulimits:
+      nofile:
+        soft: 100000
+        hard: 100000
+    ports:
+      - "${BIND_HOST:-0.0.0.0}:8181:8080"
+    volumes:
+      - ./data:/app/data
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - AUTO_SETUP=true
+      - SERVER_HOST=0.0.0.0
+      - SERVER_PORT=8080
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_USER=${POSTGRES_USER:-sub2api}
+      - DATABASE_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      - DATABASE_DBNAME=${POSTGRES_DB:-sub2api}
+      - DATABASE_SSLMODE=disable
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
+      - REDIS_DB=${REDIS_DB:-0}
+      - JWT_SECRET=${JWT_SECRET:-}
+      - TOTP_ENCRYPTION_KEY=${TOTP_ENCRYPTION_KEY:-}
+      - TZ=${TZ:-Asia/Shanghai}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - sub2api-network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-T", "5", "-O", "/dev/null", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    profiles: ["preview"]
