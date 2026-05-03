@@ -503,6 +503,10 @@ type ForwardResult struct {
 	// 图片生成计费字段（图片生成模型使用）
 	ImageCount int    // 生成的图片数量
 	ImageSize  string // 图片尺寸 "1K", "2K", "4K"
+
+	// [bmai-fork] response capture for audit (non-streaming path only)
+	ResponseBodyPreview []byte
+	ResponseBodyBytes   int
 }
 
 // UpstreamFailoverError indicates an upstream error that should trigger account failover.
@@ -5394,6 +5398,11 @@ func (s *GatewayService) handleStreamingResponseAnthropicAPIKeyPassthrough(
 					// 按 SSE 事件边界刷出，减少每行 flush 带来的 syscall 开销。
 					flusher.Flush()
 				}
+				// [bmai-fork] tee to audit capture buffer
+				if capBuf := AuditCaptureBufferFromContext(ctx); capBuf != nil {
+					capBuf.Write([]byte(restored))
+					capBuf.Write([]byte{'\n'})
+				}
 			}
 
 		case <-intervalCh:
@@ -7113,6 +7122,20 @@ type streamingResult struct {
 	usage            *ClaudeUsage
 	firstTokenMs     *int
 	clientDisconnect bool // 客户端是否在流式传输过程中断开
+}
+
+// [bmai-fork] context key for audit capture buffer
+type auditCaptureCtxKey struct{}
+
+// WithAuditCaptureBuffer attaches an AuditCaptureBuffer to the context.
+func WithAuditCaptureBuffer(ctx context.Context, buf *AuditCaptureBuffer) context.Context {
+	return context.WithValue(ctx, auditCaptureCtxKey{}, buf)
+}
+
+// AuditCaptureBufferFromContext retrieves the capture buffer, or nil if absent.
+func AuditCaptureBufferFromContext(ctx context.Context) *AuditCaptureBuffer {
+	buf, _ := ctx.Value(auditCaptureCtxKey{}).(*AuditCaptureBuffer)
+	return buf
 }
 
 func (s *GatewayService) handleStreamingResponse(ctx context.Context, resp *http.Response, c *gin.Context, account *Account, startTime time.Time, originalModel, mappedModel string, mimicClaudeCode bool) (*streamingResult, error) {

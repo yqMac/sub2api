@@ -51,6 +51,7 @@ type GatewayHandler struct {
 	maxAccountSwitchesGemini  int
 	cfg                       *config.Config
 	settingService            *service.SettingService
+	auditLogService           *service.AuditLogService // [bmai-fork]
 }
 
 // NewGatewayHandler creates a new GatewayHandler
@@ -68,6 +69,7 @@ func NewGatewayHandler(
 	userMsgQueueService *service.UserMessageQueueService,
 	cfg *config.Config,
 	settingService *service.SettingService,
+	auditLogService *service.AuditLogService, // [bmai-fork]
 ) *GatewayHandler {
 	pingInterval := time.Duration(0)
 	maxAccountSwitches := 10
@@ -104,6 +106,7 @@ func NewGatewayHandler(
 		maxAccountSwitchesGemini:  maxAccountSwitchesGemini,
 		cfg:                       cfg,
 		settingService:            settingService,
+		auditLogService:           auditLogService, // [bmai-fork]
 	}
 }
 
@@ -157,6 +160,13 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 	reqModel := parsedReq.Model
 	reqStream := parsedReq.Stream
 	reqLog = reqLog.With(zap.String("model", reqModel), zap.Bool("stream", reqStream))
+
+	// [bmai-fork] acquire audit capture buffer; nil when audit disabled
+	auditBuf, auditCtx := h.auditAcquireBuffer(c.Request.Context())
+	if auditBuf != nil {
+		c.Request = c.Request.WithContext(auditCtx)
+		defer h.auditReleaseBuffer(auditBuf)
+	}
 
 	// 解析渠道级模型映射
 	channelMapping, _ := h.gatewayService.ResolveChannelMappingAndRestrict(c.Request.Context(), apiKey.GroupID, reqModel)
@@ -524,6 +534,8 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 					).Error("gateway.record_usage_failed", zap.Error(err))
 				}
 			})
+			// [bmai-fork] submit audit log (no-op when disabled)
+			h.submitAuditFromMessagesContext(parsedReq, account, apiKey, result, auditBuf, body, inboundEndpoint)
 			return
 		}
 	}
