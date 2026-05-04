@@ -125,32 +125,32 @@ export interface AuditStorageInfo {
 
 export const auditAPI = {
   async list(filter: AuditLogFilter, signal?: AbortSignal): Promise<AuditLogListResponse> {
-    const { data } = await apiClient.get<{ data: AuditLogListResponse }>('/admin/audit/logs', {
+    const { data } = await apiClient.get<AuditLogListResponse>('/admin/audit/logs', {
       params: filter,
       signal
     })
-    return data.data
+    return data
   },
   async get(id: number): Promise<AuditLogDetail> {
-    const { data } = await apiClient.get<{ data: AuditLogDetail }>(`/admin/audit/logs/${id}`)
-    return data.data
+    const { data } = await apiClient.get<AuditLogDetail>(`/admin/audit/logs/${id}`)
+    return data
   },
   async getSettings(): Promise<AuditSettings> {
-    const { data } = await apiClient.get<{ data: AuditSettings }>('/admin/audit/settings')
-    return data.data
+    const { data } = await apiClient.get<AuditSettings>('/admin/audit/settings')
+    return data
   },
   async updateSettings(settings: Partial<AuditSettings>): Promise<AuditSettings> {
-    const { data } = await apiClient.put<{ data: AuditSettings }>('/admin/audit/settings', settings)
-    return data.data
+    const { data } = await apiClient.put<AuditSettings>('/admin/audit/settings', settings)
+    return data
   },
   async getStorage(): Promise<AuditStorageInfo> {
-    const { data } = await apiClient.get<{ data: AuditStorageInfo }>('/admin/audit/storage')
-    return data.data
+    const { data } = await apiClient.get<AuditStorageInfo>('/admin/audit/storage')
+    return data
   },
   async cleanup(beforeDays: number): Promise<{ deleted: number }> {
-    const { data } = await apiClient.post<{ data: { deleted: number } }>('/admin/audit/cleanup', {
+    const { data } = await apiClient.post<{ deleted: number }>('/admin/audit/cleanup', {
       before_days: beforeDays
     })
-    return data.data
+    return data
   }
 }

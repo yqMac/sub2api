@@ -36,41 +36,41 @@ export interface UserDepartment {
 
 export const organizationAPI = {
   async list(): Promise<Organization[]> {
-    const { data } = await apiClient.get<{ data: Organization[] }>('/admin/organizations')
-    return data.data || []
+    const { data } = await apiClient.get<Organization[]>('/admin/organizations')
+    return data || []
   },
   async create(input: { tenant_key: string; name: string; type?: string }): Promise<Organization> {
-    const { data } = await apiClient.post<{ data: Organization }>('/admin/organizations', input)
-    return data.data
+    const { data } = await apiClient.post<Organization>('/admin/organizations', input)
+    return data
   },
   async delete(id: number): Promise<void> {
     await apiClient.delete(`/admin/organizations/${id}`)
   },
   async departmentTree(orgId: number): Promise<Department[]> {
-    const { data } = await apiClient.get<{ data: Department[] }>(
+    const { data } = await apiClient.get<Department[]>(
       `/admin/organizations/${orgId}/departments`
     )
-    return data.data || []
+    return data || []
   },
   async createDepartment(
     orgId: number,
     input: { external_id: string; name: string; parent_id?: number }
   ): Promise<Department> {
-    const { data } = await apiClient.post<{ data: Department }>(
+    const { data } = await apiClient.post<Department>(
       `/admin/organizations/${orgId}/departments`,
       input
     )
-    return data.data
+    return data
   },
   async updateDepartment(
     deptId: number,
     input: { name?: string; parent_id?: number | null }
   ): Promise<Department> {
-    const { data } = await apiClient.put<{ data: Department }>(
+    const { data } = await apiClient.put<Department>(
       `/admin/organizations/departments/${deptId}`,
       input
     )
-    return data.data
+    return data
   },
   async deleteDepartment(deptId: number): Promise<void> {
     await apiClient.delete(`/admin/organizations/departments/${deptId}`)
@@ -80,12 +80,11 @@ export const organizationAPI = {
     page = 1,
     pageSize = 50
   ): Promise<{ items: UserDepartment[]; total: number }> {
-    const { data } = await apiClient.get<{
-      data: { items: UserDepartment[]; total: number }
-    }>(`/admin/organizations/departments/${deptId}/users`, {
-      params: { page, page_size: pageSize }
-    })
-    return data.data
+    const { data } = await apiClient.get<{ items: UserDepartment[]; total: number }>(
+      `/admin/organizations/departments/${deptId}/users`,
+      { params: { page, page_size: pageSize } }
+    )
+    return data
   },
   async assignUser(
     deptId: number,

@@ -23,35 +23,48 @@
             <!-- Meta info -->
             <div class="grid grid-cols-2 gap-4 rounded-lg bg-gray-50 p-4 text-sm dark:bg-gray-900 md:grid-cols-4">
               <div>
-                <div class="text-xs text-gray-500">User ID</div>
+                <div class="text-xs text-gray-500">{{ t('admin.audit.detail.userId') || '用户 ID' }}</div>
                 <div class="font-medium">{{ log.user_id }}</div>
               </div>
               <div>
-                <div class="text-xs text-gray-500">Department</div>
+                <div class="text-xs text-gray-500">{{ t('admin.audit.detail.department') || '部门' }}</div>
                 <div class="font-medium">{{ log.department_path || '-' }}</div>
               </div>
               <div>
-                <div class="text-xs text-gray-500">Model</div>
-                <div class="font-medium">{{ log.platform }} / {{ log.model }}</div>
+                <div class="text-xs text-gray-500">{{ t('admin.audit.detail.model') || '模型' }}</div>
+                <div class="font-medium">
+                  <span class="rounded bg-gray-200 px-1.5 py-0.5 text-xs dark:bg-gray-700">{{ platformLabel(log.platform) }}</span>
+                  <span class="ml-1">{{ log.model }}</span>
+                </div>
               </div>
               <div>
-                <div class="text-xs text-gray-500">Type</div>
+                <div class="text-xs text-gray-500">{{ t('admin.audit.detail.contentType') || '类型' }}</div>
                 <div class="font-medium">{{ log.content_type ? t(`admin.audit.contentType.${log.content_type}`) : '-' }}</div>
               </div>
               <div>
-                <div class="text-xs text-gray-500">Duration</div>
+                <div class="text-xs text-gray-500">{{ t('admin.audit.detail.duration') || '耗时' }}</div>
                 <div class="font-medium">{{ log.duration_ms }}ms</div>
               </div>
               <div>
-                <div class="text-xs text-gray-500">Tokens</div>
-                <div class="font-medium">{{ log.input_tokens }} in / {{ log.output_tokens }} out</div>
+                <div class="text-xs text-gray-500">{{ t('admin.audit.detail.tokens') || 'Tokens' }}</div>
+                <div class="font-medium">{{ log.input_tokens }} {{ t('admin.audit.detail.tokensIn') || '输入' }} / {{ log.output_tokens }} {{ t('admin.audit.detail.tokensOut') || '输出' }}</div>
               </div>
               <div>
-                <div class="text-xs text-gray-500">Endpoint</div>
+                <div class="text-xs text-gray-500">{{ t('admin.audit.detail.streamMode') || '请求模式' }}</div>
+                <div class="font-medium">{{ log.stream ? t('admin.audit.stream.yes') : t('admin.audit.stream.no') }}</div>
+              </div>
+              <div>
+                <div class="text-xs text-gray-500">{{ t('admin.audit.detail.statusCode') || '状态码' }}</div>
+                <div class="font-medium">
+                  <span :class="statusClass(log.status_code)" class="rounded px-1.5 py-0.5 text-xs">{{ log.status_code }} · {{ statusLabel(log.status_code) }}</span>
+                </div>
+              </div>
+              <div class="col-span-2">
+                <div class="text-xs text-gray-500">{{ t('admin.audit.detail.endpoint') || '端点' }}</div>
                 <div class="font-mono text-xs">{{ log.endpoint }}</div>
               </div>
-              <div>
-                <div class="text-xs text-gray-500">Time</div>
+              <div class="col-span-2">
+                <div class="text-xs text-gray-500">{{ t('admin.audit.detail.time') || '时间' }}</div>
                 <div class="text-xs">{{ formatTime(log.created_at) }}</div>
               </div>
             </div>
@@ -116,6 +129,29 @@ async function load() {
 
 function formatTime(s: string): string {
   return new Date(s).toLocaleString()
+}
+
+function platformLabel(p: string): string {
+  if (!p) return '-'
+  const key = `admin.audit.platform.${p}`
+  const v = t(key)
+  return v === key ? p : v
+}
+
+function statusLabel(code: number): string {
+  if (code >= 200 && code < 300) return t('admin.audit.status.success')
+  if (code === 429) return t('admin.audit.status.rateLimited')
+  if (code >= 400 && code < 500) return t('admin.audit.status.clientError')
+  if (code >= 500) return t('admin.audit.status.serverError')
+  return String(code)
+}
+
+function statusClass(code: number): string {
+  if (code >= 200 && code < 300) return 'bg-green-100 text-green-800'
+  if (code === 429) return 'bg-yellow-100 text-yellow-800'
+  if (code >= 400 && code < 500) return 'bg-orange-100 text-orange-800'
+  if (code >= 500) return 'bg-red-100 text-red-800'
+  return 'bg-gray-100 text-gray-700'
 }
 
 function formatBytes(n: number): string {

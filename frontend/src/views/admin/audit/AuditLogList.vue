@@ -82,18 +82,24 @@
             <td class="whitespace-nowrap px-3 py-2 text-xs text-gray-700 dark:text-gray-300">{{ formatTime(row.created_at) }}</td>
             <td class="whitespace-nowrap px-3 py-2 text-sm text-gray-900 dark:text-gray-100">{{ row.user_id }}</td>
             <td class="whitespace-nowrap px-3 py-2 text-sm text-gray-700 dark:text-gray-300">{{ row.department_path || '-' }}</td>
-            <td class="whitespace-nowrap px-3 py-2 text-sm text-gray-900 dark:text-gray-100">{{ row.model }}</td>
+            <td class="whitespace-nowrap px-3 py-2 text-sm text-gray-900 dark:text-gray-100">
+              <span class="inline-flex items-center gap-1">
+                <span class="rounded bg-gray-100 px-1.5 py-0.5 text-xs font-medium text-gray-700 dark:bg-gray-700 dark:text-gray-200">{{ platformLabel(row.platform) }}</span>
+                <span>{{ row.model }}</span>
+              </span>
+            </td>
             <td class="whitespace-nowrap px-3 py-2">
               <span v-if="row.content_type" :class="badgeClass(row.content_type)" class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium">
                 {{ t(`admin.audit.contentType.${row.content_type}`) }}
               </span>
+              <span v-else class="text-xs text-gray-400">-</span>
             </td>
-            <td class="max-w-xs truncate px-3 py-2 text-xs text-gray-600 dark:text-gray-400">{{ row.request_summary }}</td>
-            <td class="max-w-xs truncate px-3 py-2 text-xs text-gray-600 dark:text-gray-400">{{ row.response_summary }}</td>
+            <td class="max-w-xs truncate px-3 py-2 text-xs text-gray-600 dark:text-gray-400" :title="row.request_summary">{{ row.request_summary || '-' }}</td>
+            <td class="max-w-xs truncate px-3 py-2 text-xs text-gray-600 dark:text-gray-400" :title="row.response_summary">{{ row.response_summary || '-' }}</td>
             <td class="whitespace-nowrap px-3 py-2 text-xs text-gray-700 dark:text-gray-300">{{ row.input_tokens }}/{{ row.output_tokens }}</td>
             <td class="whitespace-nowrap px-3 py-2 text-xs text-gray-700 dark:text-gray-300">{{ row.duration_ms }}ms</td>
             <td class="whitespace-nowrap px-3 py-2">
-              <button @click="openDetail(row.id)" class="text-sm text-primary-600 hover:underline">View</button>
+              <button @click="openDetail(row.id)" class="text-sm text-primary-600 hover:underline">{{ t('common.view') || 'View' }}</button>
             </td>
           </tr>
         </tbody>
@@ -223,6 +229,12 @@ function badgeClass(ct: AuditContentType): string {
     script: 'bg-teal-100 text-teal-800'
   }
   return map[ct] || 'bg-gray-100 text-gray-800'
+}
+
+function platformLabel(p: string): string {
+  const key = `admin.audit.platform.${p}`
+  const v = t(key)
+  return v === key ? p : v
 }
 
 onMounted(load)
