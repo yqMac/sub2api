@@ -4,6 +4,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -21,39 +22,55 @@ func NewOrganizationRepository(db *sql.DB) service.OrganizationRepository {
 }
 
 func (r *organizationRepository) GetByID(ctx context.Context, id int64) (*domain.Organization, error) {
-	const q = `SELECT id, tenant_key, name, type, created_at, updated_at FROM organizations WHERE id = $1 AND deleted_at IS NULL`
+	const q = `SELECT id, tenant_key, name, type, metadata, created_at, updated_at FROM organizations WHERE id = $1 AND deleted_at IS NULL`
 	org := &domain.Organization{}
-	err := r.db.QueryRowContext(ctx, q, id).Scan(&org.ID, &org.TenantKey, &org.Name, &org.Type, &org.CreatedAt, &org.UpdatedAt)
+	var metaJSON []byte
+	err := r.db.QueryRowContext(ctx, q, id).Scan(&org.ID, &org.TenantKey, &org.Name, &org.Type, &metaJSON, &org.CreatedAt, &org.UpdatedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
+	}
+	if err == nil && len(metaJSON) > 0 {
+		_ = json.Unmarshal(metaJSON, &org.Metadata)
 	}
 	return org, err
 }
 
 func (r *organizationRepository) GetByTenantKey(ctx context.Context, tenantKey string) (*domain.Organization, error) {
-	const q = `SELECT id, tenant_key, name, type, created_at, updated_at FROM organizations WHERE tenant_key = $1 AND deleted_at IS NULL`
+	const q = `SELECT id, tenant_key, name, type, metadata, created_at, updated_at FROM organizations WHERE tenant_key = $1 AND deleted_at IS NULL`
 	org := &domain.Organization{}
-	err := r.db.QueryRowContext(ctx, q, tenantKey).Scan(&org.ID, &org.TenantKey, &org.Name, &org.Type, &org.CreatedAt, &org.UpdatedAt)
+	var metaJSON []byte
+	err := r.db.QueryRowContext(ctx, q, tenantKey).Scan(&org.ID, &org.TenantKey, &org.Name, &org.Type, &metaJSON, &org.CreatedAt, &org.UpdatedAt)
 	if err == sql.ErrNoRows {
 		return nil, nil
+	}
+	if err == nil && len(metaJSON) > 0 {
+		_ = json.Unmarshal(metaJSON, &org.Metadata)
 	}
 	return org, err
 }
 
 func (r *organizationRepository) UpsertOrganization(ctx context.Context, org *domain.Organization) (*domain.Organization, error) {
-	const q = `INSERT INTO organizations (tenant_key, name, type, created_at, updated_at)
-		VALUES ($1, $2, $3, NOW(), NOW())
-		ON CONFLICT (tenant_key) DO UPDATE SET name = EXCLUDED.name, type = EXCLUDED.type, updated_at = NOW()
-		RETURNING id, tenant_key, name, type, created_at, updated_at`
+	metaJSON, _ := json.Marshal(org.Metadata)
+	if org.Metadata == nil {
+		metaJSON = nil
+	}
+	const q = `INSERT INTO organizations (tenant_key, name, type, metadata, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, NOW(), NOW())
+		ON CONFLICT (tenant_key) DO UPDATE SET name = EXCLUDED.name, type = EXCLUDED.type, metadata = EXCLUDED.metadata, updated_at = NOW()
+		RETURNING id, tenant_key, name, type, metadata, created_at, updated_at`
 	result := &domain.Organization{}
-	err := r.db.QueryRowContext(ctx, q, org.TenantKey, org.Name, org.Type).Scan(
-		&result.ID, &result.TenantKey, &result.Name, &result.Type, &result.CreatedAt, &result.UpdatedAt,
+	var resultMeta []byte
+	err := r.db.QueryRowContext(ctx, q, org.TenantKey, org.Name, org.Type, metaJSON).Scan(
+		&result.ID, &result.TenantKey, &result.Name, &result.Type, &resultMeta, &result.CreatedAt, &result.UpdatedAt,
 	)
+	if err == nil && len(resultMeta) > 0 {
+		_ = json.Unmarshal(resultMeta, &result.Metadata)
+	}
 	return result, err
 }
 
 func (r *organizationRepository) ListOrganizations(ctx context.Context) ([]*domain.Organization, error) {
-	const q = `SELECT id, tenant_key, name, type, created_at, updated_at FROM organizations WHERE deleted_at IS NULL ORDER BY id`
+	const q = `SELECT id, tenant_key, name, type, metadata, created_at, updated_at FROM organizations WHERE deleted_at IS NULL ORDER BY id`
 	rows, err := r.db.QueryContext(ctx, q)
 	if err != nil {
 		return nil, err
@@ -62,8 +79,12 @@ func (r *organizationRepository) ListOrganizations(ctx context.Context) ([]*doma
 	var orgs []*domain.Organization
 	for rows.Next() {
 		o := &domain.Organization{}
-		if err := rows.Scan(&o.ID, &o.TenantKey, &o.Name, &o.Type, &o.CreatedAt, &o.UpdatedAt); err != nil {
+		var metaJSON []byte
+		if err := rows.Scan(&o.ID, &o.TenantKey, &o.Name, &o.Type, &metaJSON, &o.CreatedAt, &o.UpdatedAt); err != nil {
 			return nil, err
+		}
+		if len(metaJSON) > 0 {
+			_ = json.Unmarshal(metaJSON, &o.Metadata)
 		}
 		orgs = append(orgs, o)
 	}
