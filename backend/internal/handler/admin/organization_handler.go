@@ -11,11 +11,12 @@ import (
 )
 
 type OrganizationHandler struct {
-	orgService *service.OrganizationService
+	orgService  *service.OrganizationService
+	syncService *service.FeishuOrgSyncService
 }
 
-func NewOrganizationHandler(orgService *service.OrganizationService) *OrganizationHandler {
-	return &OrganizationHandler{orgService: orgService}
+func NewOrganizationHandler(orgService *service.OrganizationService, syncService *service.FeishuOrgSyncService) *OrganizationHandler {
+	return &OrganizationHandler{orgService: orgService, syncService: syncService}
 }
 
 // GET /api/admin/organizations
@@ -199,4 +200,87 @@ func (h *OrganizationHandler) RemoveUser(c *gin.Context) {
 func mustInt64(s string) int64 {
 	v, _ := strconv.ParseInt(s, 10, 64)
 	return v
+}
+
+// POST /api/admin/organizations/:id/feishu/config — save Feishu credentials
+func (h *OrganizationHandler) FeishuConfig(c *gin.Context) {
+	orgID := mustInt64(c.Param("id"))
+	var req struct {
+		AppID     string `json:"app_id" binding:"required"`
+		AppSecret string `json:"app_secret" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 1, "msg": err.Error()})
+		return
+	}
+	org, err := h.orgService.GetByID(c.Request.Context(), orgID)
+	if err != nil || org == nil {
+		c.JSON(http.StatusNotFound, gin.H{"code": 1, "msg": "organization not found"})
+		return
+	}
+	if org.Metadata == nil {
+		org.Metadata = make(map[string]any)
+	}
+	org.Metadata["feishu_app_id"] = req.AppID
+	org.Metadata["feishu_app_secret"] = req.AppSecret
+	if _, err := h.orgService.UpsertOrganization(c.Request.Context(), org); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 1, "msg": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"code": 0, "msg": "ok"})
+}
+
+// POST /api/admin/organizations/:id/feishu/test — test Feishu connection
+func (h *OrganizationHandler) FeishuTest(c *gin.Context) {
+	orgID := mustInt64(c.Param("id"))
+	org, err := h.orgService.GetByID(c.Request.Context(), orgID)
+	if err != nil || org == nil {
+		c.JSON(http.StatusNotFound, gin.H{"code": 1, "msg": "organization not found"})
+		return
+	}
+	appID, _ := org.Metadata["feishu_app_id"].(string)
+	appSecret, _ := org.Metadata["feishu_app_secret"].(string)
+	if appID == "" || appSecret == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 1, "msg": "feishu credentials not configured"})
+		return
+	}
+	count, err := h.syncService.TestConnection(c.Request.Context(), appID, appSecret)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"code": 0, "data": gin.H{"success": false, "error": err.Error()}})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"code": 0, "data": gin.H{"success": true, "department_count": count}})
+}
+
+// POST /api/admin/organizations/:id/feishu/sync — trigger full sync
+func (h *OrganizationHandler) FeishuSync(c *gin.Context) {
+	orgID := mustInt64(c.Param("id"))
+	org, err := h.orgService.GetByID(c.Request.Context(), orgID)
+	if err != nil || org == nil {
+		c.JSON(http.StatusNotFound, gin.H{"code": 1, "msg": "organization not found"})
+		return
+	}
+	appID, _ := org.Metadata["feishu_app_id"].(string)
+	appSecret, _ := org.Metadata["feishu_app_secret"].(string)
+	if appID == "" || appSecret == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 1, "msg": "feishu credentials not configured"})
+		return
+	}
+	result, err := h.syncService.SyncOrganization(c.Request.Context(), org, appID, appSecret)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 1, "msg": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"code": 0, "data": result})
+}
+
+// GET /api/admin/organizations/:id/feishu/status — get sync status
+func (h *OrganizationHandler) FeishuStatus(c *gin.Context) {
+	orgID := mustInt64(c.Param("id"))
+	status, err := h.syncService.GetSyncStatus(c.Request.Context(), orgID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 1, "msg": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"code": 0, "data": status})
 }

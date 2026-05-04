@@ -94,5 +94,23 @@ export const organizationAPI = {
   },
   async removeUser(deptId: number, userId: number): Promise<void> {
     await apiClient.delete(`/admin/organizations/departments/${deptId}/users/${userId}`)
+  },
+  // [bmai-fork] Feishu sync endpoints
+  async feishuConfig(orgId: number, config: { app_id: string; app_secret: string }): Promise<void> {
+    await apiClient.post(`/admin/organizations/${orgId}/feishu/config`, config)
+  },
+  async feishuTest(orgId: number): Promise<{ success: boolean; department_count?: number; error?: string }> {
+    const { data } = await apiClient.post<{ success: boolean; department_count?: number; error?: string }>(
+      `/admin/organizations/${orgId}/feishu/test`
+    )
+    return data
+  },
+  async feishuSync(orgId: number): Promise<{ departments_synced: number; users_synced: number; users_matched: number; users_unmatched: number; errors?: string[] }> {
+    const { data } = await apiClient.post<any>(`/admin/organizations/${orgId}/feishu/sync`)
+    return data
+  },
+  async feishuStatus(orgId: number): Promise<any> {
+    const { data } = await apiClient.get<any>(`/admin/organizations/${orgId}/feishu/status`)
+    return data
   }
 }

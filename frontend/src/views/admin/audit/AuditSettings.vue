@@ -1,106 +1,128 @@
-<!-- [bmai-fork] audit settings page -->
+<!-- [bmai-fork] audit settings page — card-based layout matching SettingsView -->
 <template>
-  <div class="p-6">
-    <div v-if="loading" class="py-12 text-center text-gray-500">Loading...</div>
-    <div v-else-if="settings" class="space-y-8">
+  <div class="space-y-6">
+    <div v-if="loading" class="card flex items-center justify-center py-12">
+      <div class="h-8 w-8 animate-spin rounded-full border-b-2 border-primary-600"></div>
+    </div>
+    <template v-else-if="settings">
       <!-- Master Switch -->
-      <section>
-        <h3 class="mb-4 text-lg font-medium text-gray-900 dark:text-gray-100">
-          {{ t('admin.audit.settings.master.title') }}
-        </h3>
-        <div class="flex items-center justify-between rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
-          <div>
-            <div class="font-medium text-gray-900 dark:text-gray-100">
-              {{ t('admin.audit.settings.master.enabled') }}
-            </div>
-            <div class="text-sm text-gray-500">
-              {{ t('admin.audit.settings.master.enabledDesc') }}
-            </div>
-          </div>
-          <button
-            @click="settings.enabled = !settings.enabled"
-            class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors"
-            :class="settings.enabled ? 'bg-primary-500' : 'bg-gray-300 dark:bg-gray-600'"
-          >
-            <span
-              class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200"
-              :class="settings.enabled ? 'translate-x-5' : 'translate-x-0'"
-            />
-          </button>
+      <div class="card">
+        <div class="border-b border-gray-100 px-6 py-4 dark:border-dark-700">
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{{ t('admin.audit.settings.master.title') }}</h2>
         </div>
-      </section>
-
-      <!-- Capture Settings -->
-      <section :class="{ 'opacity-50 pointer-events-none': !settings.enabled }">
-        <h3 class="mb-4 text-lg font-medium text-gray-900 dark:text-gray-100">
-          {{ t('admin.audit.settings.capture.title') }}
-        </h3>
-        <div class="space-y-3 rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
-          <SettingNumberRow :label="t('admin.audit.settings.capture.maxRequest')" v-model="settings.max_request_bytes" :min="1024" :step="1024" suffix="bytes" />
-          <SettingNumberRow :label="t('admin.audit.settings.capture.maxResponse')" v-model="settings.max_response_bytes" :min="1024" :step="1024" suffix="bytes" />
-          <SettingToggleRow
-            :label="t('admin.audit.settings.capture.captureUpstream')"
-            :description="t('admin.audit.settings.capture.captureUpstreamDesc')"
-            v-model="settings.capture_upstream"
-          />
-          <SettingToggleRow
-            :label="t('admin.audit.settings.capture.classifyResponse')"
-            :description="t('admin.audit.settings.capture.classifyResponseDesc')"
-            v-model="settings.classify_response"
-          />
-        </div>
-      </section>
-
-      <!-- Storage -->
-      <section>
-        <h3 class="mb-4 text-lg font-medium text-gray-900 dark:text-gray-100">
-          {{ t('admin.audit.settings.storage.title') }}
-        </h3>
-        <div class="space-y-3 rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
-          <SettingNumberRow :label="t('admin.audit.settings.storage.retention')" v-model="settings.retention_days" :min="1" :max="365" suffix="days" />
-          <div v-if="storage" class="grid grid-cols-3 gap-4 border-t border-gray-200 pt-3 dark:border-gray-700">
+        <div class="space-y-4 p-6">
+          <div class="flex items-center justify-between">
             <div>
-              <div class="text-sm text-gray-500">{{ t('admin.audit.settings.storage.totalRows') }}</div>
-              <div class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ formatNumber(storage.TotalRows) }}</div>
+              <div class="font-medium text-gray-900 dark:text-white">{{ t('admin.audit.settings.master.enabled') }}</div>
+              <div class="text-sm text-gray-500 dark:text-gray-400">{{ t('admin.audit.settings.master.enabledDesc') }}</div>
             </div>
-            <div>
-              <div class="text-sm text-gray-500">{{ t('admin.audit.settings.storage.totalSize') }}</div>
-              <div class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ formatBytes(storage.TotalBytes) }}</div>
-            </div>
-            <div>
-              <div class="text-sm text-gray-500">{{ t('admin.audit.settings.storage.earliest') }}</div>
-              <div class="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                {{ storage.EarliestRecord ? formatDate(storage.EarliestRecord) : '-' }}
-              </div>
-            </div>
-          </div>
-          <div class="border-t border-gray-200 pt-3 dark:border-gray-700">
-            <button
-              @click="manualCleanup"
-              class="rounded-md border border-red-300 bg-red-50 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-100"
-            >
-              {{ t('admin.audit.settings.storage.manualCleanup') }}
+            <button @click="settings.enabled = !settings.enabled"
+              class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors"
+              :class="settings.enabled ? 'bg-primary-500' : 'bg-gray-300 dark:bg-gray-600'">
+              <span class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200"
+                :class="settings.enabled ? 'translate-x-5' : 'translate-x-0'" />
             </button>
           </div>
         </div>
-      </section>
+      </div>
+
+      <!-- Capture Settings -->
+      <div class="card" :class="{ 'opacity-50 pointer-events-none': !settings.enabled }">
+        <div class="border-b border-gray-100 px-6 py-4 dark:border-dark-700">
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{{ t('admin.audit.settings.capture.title') }}</h2>
+        </div>
+        <div class="space-y-4 p-6">
+          <div class="flex items-center justify-between">
+            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('admin.audit.settings.capture.maxRequest') }}</span>
+            <div class="flex items-center gap-2">
+              <input type="number" v-model.number="settings.max_request_bytes" :min="1024" :step="1024"
+                class="w-32 rounded-lg border border-gray-200 px-3 py-1.5 text-sm dark:border-dark-600 dark:bg-dark-700" />
+              <span class="text-sm text-gray-500">bytes</span>
+            </div>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('admin.audit.settings.capture.maxResponse') }}</span>
+            <div class="flex items-center gap-2">
+              <input type="number" v-model.number="settings.max_response_bytes" :min="1024" :step="1024"
+                class="w-32 rounded-lg border border-gray-200 px-3 py-1.5 text-sm dark:border-dark-600 dark:bg-dark-700" />
+              <span class="text-sm text-gray-500">bytes</span>
+            </div>
+          </div>
+          <div class="flex items-center justify-between">
+            <div>
+              <div class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('admin.audit.settings.capture.captureUpstream') }}</div>
+              <div class="text-xs text-gray-500">{{ t('admin.audit.settings.capture.captureUpstreamDesc') }}</div>
+            </div>
+            <button @click="settings.capture_upstream = !settings.capture_upstream"
+              class="relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full transition-colors"
+              :class="settings.capture_upstream ? 'bg-primary-500' : 'bg-gray-300 dark:bg-gray-600'">
+              <span class="pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow transition duration-200"
+                :class="settings.capture_upstream ? 'translate-x-4' : 'translate-x-0.5'" />
+            </button>
+          </div>
+          <div class="flex items-center justify-between">
+            <div>
+              <div class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('admin.audit.settings.capture.classifyResponse') }}</div>
+              <div class="text-xs text-gray-500">{{ t('admin.audit.settings.capture.classifyResponseDesc') }}</div>
+            </div>
+            <button @click="settings.classify_response = !settings.classify_response"
+              class="relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full transition-colors"
+              :class="settings.classify_response ? 'bg-primary-500' : 'bg-gray-300 dark:bg-gray-600'">
+              <span class="pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow transition duration-200"
+                :class="settings.classify_response ? 'translate-x-4' : 'translate-x-0.5'" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Storage -->
+      <div class="card">
+        <div class="border-b border-gray-100 px-6 py-4 dark:border-dark-700">
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{{ t('admin.audit.settings.storage.title') }}</h2>
+        </div>
+        <div class="space-y-4 p-6">
+          <div class="flex items-center justify-between">
+            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ t('admin.audit.settings.storage.retention') }}</span>
+            <div class="flex items-center gap-2">
+              <input type="number" v-model.number="settings.retention_days" :min="1" :max="365"
+                class="w-24 rounded-lg border border-gray-200 px-3 py-1.5 text-sm dark:border-dark-600 dark:bg-dark-700" />
+              <span class="text-sm text-gray-500">days</span>
+            </div>
+          </div>
+          <div v-if="storage" class="grid grid-cols-3 gap-4 rounded-lg bg-gray-50 p-4 dark:bg-dark-700/50">
+            <div>
+              <div class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.audit.settings.storage.totalRows') }}</div>
+              <div class="text-lg font-semibold text-gray-900 dark:text-white">{{ formatNumber(storage.TotalRows) }}</div>
+            </div>
+            <div>
+              <div class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.audit.settings.storage.totalSize') }}</div>
+              <div class="text-lg font-semibold text-gray-900 dark:text-white">{{ formatBytes(storage.TotalBytes) }}</div>
+            </div>
+            <div>
+              <div class="text-xs text-gray-500 dark:text-gray-400">{{ t('admin.audit.settings.storage.earliest') }}</div>
+              <div class="text-sm font-semibold text-gray-900 dark:text-white">{{ storage.EarliestRecord ? formatDate(storage.EarliestRecord) : '-' }}</div>
+            </div>
+          </div>
+          <button @click="manualCleanup"
+            class="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-100 dark:border-red-800 dark:bg-red-900/20 dark:text-red-400">
+            {{ t('admin.audit.settings.storage.manualCleanup') }}
+          </button>
+        </div>
+      </div>
 
       <!-- Save -->
-      <div class="flex justify-end border-t border-gray-200 pt-4 dark:border-gray-700">
-        <button
-          @click="save"
-          :disabled="saving"
-          class="rounded-md bg-primary-500 px-6 py-2 text-sm font-medium text-white hover:bg-primary-600 disabled:opacity-50"
-        >
+      <div class="flex justify-end">
+        <button @click="save" :disabled="saving"
+          class="rounded-lg bg-primary-500 px-6 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-primary-600 disabled:opacity-50">
           {{ saving ? '...' : t('admin.audit.settings.save') }}
         </button>
       </div>
-    </div>
+    </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, h } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { auditAPI, type AuditSettings, type AuditStorageInfo } from '@/api/admin/audit'
 
@@ -144,58 +166,17 @@ async function manualCleanup() {
     const res = await auditAPI.cleanup(n)
     alert(`Deleted ${res.deleted} rows`)
     storage.value = await auditAPI.getStorage()
-  } catch (e) {
-    console.error(e)
-  }
+  } catch (e) { console.error(e) }
 }
 
-function formatNumber(n: number): string {
-  return n.toLocaleString()
-}
-
+function formatNumber(n: number): string { return n.toLocaleString() }
 function formatBytes(n: number): string {
   if (n < 1024) return `${n} B`
   if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`
   if (n < 1024 * 1024 * 1024) return `${(n / 1024 / 1024).toFixed(1)} MB`
   return `${(n / 1024 / 1024 / 1024).toFixed(2)} GB`
 }
-
-function formatDate(s: string): string {
-  return new Date(s).toLocaleDateString()
-}
-
-// Inline tiny components to avoid extra files
-const SettingNumberRow = (props: any) => h('div', { class: 'flex items-center justify-between' }, [
-  h('div', { class: 'text-sm font-medium text-gray-700 dark:text-gray-300' }, props.label),
-  h('div', { class: 'flex items-center gap-2' }, [
-    h('input', {
-      type: 'number',
-      value: props.modelValue,
-      min: props.min,
-      max: props.max,
-      step: props.step,
-      onInput: (e: any) => props['onUpdate:modelValue']?.(Number(e.target.value)),
-      class: 'w-32 rounded border border-gray-300 px-3 py-1 text-sm dark:border-gray-600 dark:bg-gray-800'
-    }),
-    props.suffix && h('span', { class: 'text-sm text-gray-500' }, props.suffix)
-  ])
-])
-
-const SettingToggleRow = (props: any) => h('div', { class: 'flex items-center justify-between' }, [
-  h('div', null, [
-    h('div', { class: 'text-sm font-medium text-gray-700 dark:text-gray-300' }, props.label),
-    props.description && h('div', { class: 'text-xs text-gray-500' }, props.description)
-  ]),
-  h('button', {
-    type: 'button',
-    onClick: () => props['onUpdate:modelValue']?.(!props.modelValue),
-    class: ['relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full transition-colors',
-      props.modelValue ? 'bg-primary-500' : 'bg-gray-300 dark:bg-gray-600']
-  }, h('span', {
-    class: ['pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow transition duration-200',
-      props.modelValue ? 'translate-x-5' : 'translate-x-0.5']
-  }))
-])
+function formatDate(s: string): string { return new Date(s).toLocaleDateString() }
 
 onMounted(load)
 </script>

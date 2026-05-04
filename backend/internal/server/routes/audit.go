@@ -41,5 +41,11 @@ func registerOrganizationRoutes(admin *gin.RouterGroup, h *handler.Handlers) {
 		orgs.GET("/departments/:id/users", h.Admin.Organization.DepartmentUsers)
 		orgs.POST("/departments/:id/users", h.Admin.Organization.AssignUser)
 		orgs.DELETE("/departments/:id/users/:userId", h.Admin.Organization.RemoveUser)
+
+		// [bmai-fork] Feishu sync endpoints
+		orgs.POST("/:id/feishu/config", h.Admin.Organization.FeishuConfig)
+		orgs.POST("/:id/feishu/test", h.Admin.Organization.FeishuTest)
+		orgs.POST("/:id/feishu/sync", h.Admin.Organization.FeishuSync)
+		orgs.GET("/:id/feishu/status", h.Admin.Organization.FeishuStatus)
 	}
 }

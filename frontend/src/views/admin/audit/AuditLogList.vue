@@ -1,9 +1,10 @@
 <!-- [bmai-fork] audit log list with filters and detail dialog -->
 <template>
-  <div class="audit-log-list">
+  <div class="space-y-4">
     <!-- Filters -->
-    <div class="border-b border-gray-200 p-4 dark:border-gray-700">
-      <div class="grid grid-cols-1 gap-3 md:grid-cols-3 lg:grid-cols-6">
+    <div class="card">
+      <div class="p-4">
+        <div class="grid grid-cols-1 gap-3 md:grid-cols-3 lg:grid-cols-6">
         <div>
           <label class="mb-1 block text-xs font-medium text-gray-700 dark:text-gray-300">{{ t('admin.audit.filters.timeRange') }}</label>
           <select v-model="filter.timeRange" class="w-full rounded border border-gray-300 px-2 py-1 text-sm dark:border-gray-600 dark:bg-gray-800">
@@ -53,9 +54,11 @@
         </button>
       </div>
     </div>
+    </div>
 
     <!-- Table -->
-    <div class="overflow-x-auto">
+    <div class="card">
+      <div class="overflow-x-auto">
       <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
         <thead class="bg-gray-50 dark:bg-gray-900">
           <tr>
@@ -105,15 +108,18 @@
         </tbody>
       </table>
     </div>
+    </div>
 
     <!-- Pagination -->
-    <div class="flex items-center justify-between border-t border-gray-200 px-4 py-3 dark:border-gray-700">
+    <div class="card">
+      <div class="flex items-center justify-between px-4 py-3">
       <div class="text-sm text-gray-500">Total: {{ total }}</div>
       <div class="flex gap-2">
         <button @click="prevPage" :disabled="filter.page <= 1" class="rounded border border-gray-300 px-3 py-1 text-sm disabled:opacity-50 dark:border-gray-600">Prev</button>
         <span class="px-3 py-1 text-sm">{{ filter.page }} / {{ totalPages }}</span>
         <button @click="nextPage" :disabled="filter.page >= totalPages" class="rounded border border-gray-300 px-3 py-1 text-sm disabled:opacity-50 dark:border-gray-600">Next</button>
       </div>
+    </div>
     </div>
 
     <!-- Detail Dialog -->
