@@ -4,6 +4,7 @@ package admin
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/Wei-Shaw/sub2api/internal/domain"
 	"github.com/Wei-Shaw/sub2api/internal/service"
@@ -246,7 +247,11 @@ func (h *OrganizationHandler) FeishuTest(c *gin.Context) {
 	}
 	count, err := h.syncService.TestConnection(c.Request.Context(), appID, appSecret)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{"code": 0, "data": gin.H{"success": false, "error": err.Error()}})
+		hint := err.Error()
+		if strings.Contains(hint, "40004") || strings.Contains(hint, "no dept authority") {
+			hint = "飞书应用缺少通讯录权限。请在飞书开放平台 → 应用 → 权限管理中开通：contact:department.base:readonly 和 contact:user.base:readonly，并设置通讯录授权范围为「全部员工」"
+		}
+		c.JSON(http.StatusOK, gin.H{"code": 0, "data": gin.H{"success": false, "error": hint}})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"code": 0, "data": gin.H{"success": true, "department_count": count}})
